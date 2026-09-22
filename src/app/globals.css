@@ -1,26 +1,103 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f7f7;
+  --foreground: #292929;
+  --whale-bone-100: #f1f1f1;
+  --whale-bone-200: #e5e5e5;
+  --whale-bone-700: #6c6c6c;
+  --whale-bone-950: #292929;
+  --savoy-blue-100: #e4e8fd;
+  --savoy-blue-400: #6972d4;
+  --savoy-blue-500: #5054c0;
+  --savoy-blue-700: #3a3b9b;
+  --savoy-blue-950: #21244a;
+  --egg-toast-100: #faf4de;
+  --egg-toast-500: #f6cf10;
+  --lemon-meringue-300: #ebce36;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-noto-kufi-arabic), sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-noto-kufi-arabic), sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { max-width: 100%; overflow-x: hidden; }
+main { position: relative; width: 100%; max-width: 100%; }
+button { cursor: pointer; }
+.space-y-4:has(> .logo-dropzone) { display: flex; flex-direction: column; gap: 1rem; }
+.space-y-4:has(> .logo-dropzone) > .logo-dropzone { order: 4; }
+.space-y-4:has(> .logo-dropzone) > button { order: 5; }
+.grid-paper { background-image: linear-gradient(#f1f1f1 1px, transparent 1px), linear-gradient(90deg, #f1f1f1 1px, transparent 1px); background-size: 28px 28px; }
+
+@media (min-width: 1024px) {
+  main > aside {
+    display: flex !important;
+    position: fixed !important;
+    inset-block: 0 !important;
+    inset-inline-start: 0 !important;
+    inset-inline-end: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: 270px !important;
+    transform: none !important;
+    visibility: visible !important;
+    z-index: 30 !important;
+  }
+  main > section { width: calc(100% - 270px) !important; margin-inline-start: 270px !important; margin-inline-end: 0 !important; }
+}
+
+@media (max-width: 1023px) {
+  main > section { width: 100% !important; margin-inline: 0 !important; }
+}
+
+/* Keep older page utilities on the same palette as the dashboard. */
+[class~="bg-[#00a060]"] { background-color: var(--savoy-blue-500) !important; }
+[class~="bg-[#008a55]"] { background-color: var(--savoy-blue-700) !important; }
+[class~="bg-[#e6f5ee]"] { background-color: var(--savoy-blue-100) !important; }
+[class~="bg-[#f2f8f4]"] { background-color: var(--savoy-blue-50, #f5f7ff) !important; }
+[class~="bg-[#eff8f2]"] { background-color: var(--savoy-blue-100) !important; }
+[class~="bg-[#e9f8ef]"] { background-color: var(--savoy-blue-100) !important; }
+[class~="bg-[#f2f7f4]"]:hover { background-color: var(--savoy-blue-50, #f5f7ff) !important; }
+[class~="text-[#00a060]"] { color: var(--savoy-blue-500) !important; }
+[class~="text-[#008a55]"] { color: var(--savoy-blue-700) !important; }
+[class~="text-[#17251f]"] { color: var(--whale-bone-950) !important; }
+[class~="text-[#84938b]"] { color: var(--whale-bone-700) !important; }
+[class~="text-[#85968d]"] { color: var(--whale-bone-700) !important; }
+[class~="border-[#e3eae5]"] { border-color: var(--whale-bone-200) !important; }
+[class~="border-[#dcebe3]"] { border-color: var(--savoy-blue-200, #c3cbf7) !important; }
+[class~="border-[#dce7df]"] { border-color: var(--whale-bone-200) !important; }
+[class~="focus:border-[#00a060]"]:focus { border-color: var(--savoy-blue-500) !important; }
+
+@media (min-width: 1024px) {
+  html[dir="ltr"] main > aside { left: 0 !important; right: auto !important; }
+  html[dir="rtl"] main > aside { left: auto !important; right: 0 !important; }
+  html[dir="ltr"] main > aside { transform: translateX(0) !important; }
+  html[dir="rtl"] main > aside { transform: translateX(-100%) !important; }
+  main > aside { transform: none !important; }
+  html[dir="ltr"] main > aside { transform: none !important; }
+  html[dir="rtl"] main > aside { transform: none !important; }
+  html[dir="ltr"] main > aside { inset: 0 auto auto 0 !important; }
+  html[dir="rtl"] main > aside { inset: 0 0 auto auto !important; }
+}
+
+@media (min-width: 1280px) {
+  [class~="xl:grid-cols-5"] { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+}
+
+@media (min-width: 1024px) {
+  html[dir="ltr"] main > aside[class] { inset-inline-start: initial !important; inset-inline-end: initial !important; left: 0 !important; right: auto !important; }
+  html[dir="rtl"] main > aside[class] { inset-inline-start: initial !important; inset-inline-end: initial !important; left: auto !important; right: 0 !important; }
+  html[dir="ltr"] main > aside[class] { transform: none !important; }
+  html[dir="rtl"] main > aside[class] { transform: translateX(-100%) !important; }
+  html[dir="ltr"] main.dashboard-root > aside { left: 0 !important; right: auto !important; transform: none !important; }
+  html[dir="rtl"] main.dashboard-root > aside { left: auto !important; right: 0 !important; transform: none !important; }
 }

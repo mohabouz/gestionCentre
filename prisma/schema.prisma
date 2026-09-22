@@ -1,0 +1,193 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Student {
+  id             Int          @id @default(autoincrement())
+  name           String
+  phone          String
+  whatsapp       String?
+  status         String       @default("نشط")
+  due            Int          @default(0)
+  lastPayment    String?
+  enrollmentDate String?
+  enrollmentFee  Int          @default(0)
+  subscriptionYear Int?
+  enrollments    Enrollment[]
+  payments       Payment[]
+  attendances    Attendance[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  createdBy      User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdById    Int?
+  @@index([name])
+  @@index([phone])
+}
+
+model Teacher {
+  id         Int       @id @default(autoincrement())
+  name       String
+  specialty  String
+  commission Int       @default(60)
+  courses    Course[]
+  sessions   Session[]
+  payouts    Payout[]
+  createdAt  DateTime  @default(now())
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  name         String
+  username     String        @unique
+  passwordHash String
+  role         String        @default("ADMIN")
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  sessions     AuthSession[]
+  students     Student[]
+}
+
+model AuthSession {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique
+  userId    Int
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Course {
+  id          Int          @id @default(autoincrement())
+  name        String
+  type        String
+  teacherId   Int?
+  price       Int          @default(0)
+  teacher     Teacher?     @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  enrollments Enrollment[]
+  packSubjects PackSubject[] @relation("PackSubjects")
+  includedInPacks PackSubject[] @relation("IncludedSubjects")
+  sessions    Session[]
+  createdAt   DateTime     @default(now())
+  @@index([type])
+  @@index([teacherId])
+}
+
+model PackSubject {
+  packId    Int
+  subjectId Int
+  pack      Course @relation("PackSubjects", fields: [packId], references: [id], onDelete: Cascade)
+  subject   Course @relation("IncludedSubjects", fields: [subjectId], references: [id], onDelete: Cascade)
+  @@id([packId, subjectId])
+  @@index([subjectId])
+}
+
+model Enrollment {
+  id         Int      @id @default(autoincrement())
+  studentId  Int
+  courseId   Int
+  enrolledAt String
+  removedAt  String?
+  status     String   @default("نشط")
+  source     String?
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  @@index([studentId, status])
+  @@index([courseId, status])
+}
+
+model Payment {
+  id            Int      @id @default(autoincrement())
+  studentId     Int
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  amount        Int
+  totalAmount   Int?
+  month         String
+  status        String
+  date          String
+  method        String?
+  receiptNumber String?  @unique
+  @@index([studentId, status])
+  @@index([date])
+}
+
+model Expense {
+  id       Int    @id @default(autoincrement())
+  title    String
+  category String
+  amount   Int
+  date     String
+  @@index([date])
+  @@index([category])
+}
+
+model Session {
+  id       Int      @id @default(autoincrement())
+  title    String
+  teacherId Int?
+  courseId Int?
+  teacher  Teacher? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  course   Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  date     String
+  weekday  String?
+  time     String
+  endTime  String?
+  room     String
+  attendances Attendance[]
+  @@index([date])
+  @@index([teacherId])
+  @@index([courseId])
+}
+
+model Room {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Attendance {
+  id            Int     @id @default(autoincrement())
+  sessionId     Int
+  studentId     Int
+  occurrenceDate String
+  status        String
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  @@unique([sessionId, studentId, occurrenceDate])
+  @@index([occurrenceDate])
+}
+
+model Payout {
+  id           Int      @id @default(autoincrement())
+  teacherId    Int
+  teacher      Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  month        String
+  studentCount Int
+  revenue      Int
+  commission   Int
+  amount       Int
+  status       String
+  paidAt       String?
+  @@index([teacherId, month])
+}
+
+model AppSettings {
+  id            Int     @id
+  name          String  @default("CentMan")
+  address       String  @default("")
+  phone         String  @default("")
+  language      String  @default("العربية")
+  notifications Boolean @default(true)
+  logo          String?
+}

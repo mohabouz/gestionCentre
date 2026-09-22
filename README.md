@@ -1,3 +1,19 @@
+# CentMan
+
+Education center management dashboard for Morocco.
+
+## Database
+
+Operational data is persisted in SQLite through Prisma, not browser localStorage. The local database is created at `prisma/dev.db` from `DATABASE_URL` in `.env`.
+
+```bash
+npm install
+npm run db:migrate
+npm run db:generate
+npm run dev
+```
+
+Use `npm run db:studio` to inspect the database locally.
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
