@@ -32,7 +32,9 @@ import {
   Course,
   Enrollment,
   Expense,
+  Level,
   Payment,
+  PaymentCollection,
   Payout,
   Room,
   Session,
@@ -59,9 +61,11 @@ type Data = {
   students: Student[];
   teachers: Teacher[];
   courses: Course[];
+  levels: Level[];
   enrollments: Enrollment[];
   expenses: Expense[];
   payments: Payment[];
+  collections: PaymentCollection[];
   sessions: Session[];
   payouts: Payout[];
   rooms: Room[];
@@ -72,9 +76,11 @@ const initial: Data = {
   students: [],
   teachers: [],
   courses: [],
+  levels: [],
   enrollments: [],
   expenses: [],
   payments: [],
+  collections: [],
   sessions: [],
   payouts: [],
   rooms: [],
@@ -85,13 +91,16 @@ export default function SectionPage() {
   const pathname = usePathname();
   const section = pathname.split("/")[1] || "students";
   const [data, setData] = useState<Data>(initial);
+  const stateVersion = useRef<string | null>(null);
   const [toast, setToast] = useState("جاري تحميل البيانات...");
   const { user } = useAuth();
   useEffect(() => {
     fetch("/api/state", { cache: "no-store" })
-      .then((response) =>
-        response.ok ? response.json() : Promise.reject(new Error("database")),
-      )
+      .then(async (response) => {
+        if (!response.ok) throw new Error("database");
+        stateVersion.current = response.headers.get("etag");
+        return response.json();
+      })
       .then((saved) => {
         setData({ ...initial, ...saved });
         setToast("");
@@ -101,26 +110,12 @@ export default function SectionPage() {
   const update = async (next: Data, message = "تم حفظ التغييرات") => {
     setData(next);
     try {
-      const removedStudentIds = data.students
-        .filter(
-          (student) => !next.students.some((item) => item.id === student.id),
-        )
-        .map((student) => student.id);
-      if (removedStudentIds.length) {
-        const deletions = await Promise.all(
-          removedStudentIds.map((id) =>
-            fetch(`/api/students/${id}`, { method: "DELETE" }),
-          ),
-        );
-        if (deletions.some((response) => !response.ok))
-          throw new Error("delete");
-        setToast(message);
-        window.setTimeout(() => setToast(""), 2200);
-        return;
-      }
       const response = await fetch("/api/state", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(stateVersion.current ? { "If-Match": stateVersion.current } : {}),
+        },
         body: JSON.stringify(next),
         cache: "no-store",
       });
@@ -128,8 +123,11 @@ export default function SectionPage() {
         const details = await response.json().catch(() => null);
         throw new Error(details?.error || "database");
       }
+      stateVersion.current = response.headers.get("etag");
+      setData(await response.json());
       setToast(message);
     } catch (error) {
+      setData(data);
       setToast(
         error instanceof Error && error.message !== "database"
           ? error.message
@@ -139,8 +137,6 @@ export default function SectionPage() {
     window.setTimeout(() => setToast(""), 2200);
   };
   const deleteStudent = async (id: number) => {
-    const response = await fetch(`/api/students/${id}`, { method: "DELETE" });
-    if (!response.ok) throw new Error("delete");
     const next = {
       ...data,
       students: data.students.filter((student) => student.id !== id),
@@ -149,7 +145,7 @@ export default function SectionPage() {
       ),
       payments: data.payments.filter((payment) => payment.studentId !== id),
     };
-    setData(next);
+    await update(next);
     setToast("تم حذف الطالب");
   };
   const restricted =
