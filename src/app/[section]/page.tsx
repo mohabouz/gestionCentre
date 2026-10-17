@@ -55,6 +55,7 @@ import {
 } from "@/lib/centman-store";
 import { CourseManagement } from "@/components/course-management";
 import { LevelManagement } from "@/components/level-management";
+import { courseLevelLabel } from "@/components/course-picker";
 import { AppLanguage, useLanguage } from "@/components/language-provider";
 import { useAuth } from "@/components/auth-provider";
 import { hasSessionConflict, snapByCoverage } from "@/lib/timetable";
@@ -2896,6 +2897,22 @@ function SpreadsheetTimetable({ data, update }: Props) {
     const grabOffset = dragRef.current?.grabOffset || 0;
     return Math.max(0, Math.min(slots.length - 1, snapByCoverage(pointerIndex - grabOffset)));
   };
+  const updateDragTarget = (
+    event: React.DragEvent<HTMLTableCellElement>,
+    weekday: string,
+    room: string,
+    startIndex: number,
+    span: number,
+  ) => {
+    const sessionId = dragRef.current?.sessionId || Number(event.dataTransfer.getData("session"));
+    const draggedSession = data.sessions.find((session) => session.id === sessionId);
+    if (!draggedSession) return;
+    const index = dropIndex(event, event.currentTarget, startIndex, span);
+    const duration = Math.max(1, indexOf(draggedSession.endTime || "17:00") - indexOf(draggedSession.time));
+    const invalid = conflicts(draggedSession.id, weekday, room, index, index + duration);
+    event.dataTransfer.dropEffect = invalid ? "none" : "move";
+    setDragPreview({ sessionId: draggedSession.id, weekday, room, index, duration });
+  };
   const move = (
     session: Session,
     weekday: string,
@@ -3037,6 +3054,8 @@ function SpreadsheetTimetable({ data, update }: Props) {
                     if (session) {
                       const sessionStartIndex = index;
                       const [teacherColor, teacherTint] = teacherColors(session.teacher);
+                      const sessionCourse = data.courses.find((course) => Number(course.id) === Number(session.courseId)) || data.courses.find((course) => course.name === session.course);
+                      const sessionLevel = sessionCourse ? courseLevelLabel(sessionCourse, data.levels) : "";
                       const span = Math.max(
                         1,
                         Math.min(
@@ -3050,7 +3069,7 @@ function SpreadsheetTimetable({ data, update }: Props) {
                           colSpan={span}
                           onDragOver={(event) => {
                             event.preventDefault();
-                            event.dataTransfer.dropEffect = previewInvalid ? "none" : "move";
+                            updateDragTarget(event, weekday, room.name, sessionStartIndex, span);
                           }}
                           onDragEnter={(event) =>
                             (() => {
@@ -3100,7 +3119,7 @@ function SpreadsheetTimetable({ data, update }: Props) {
                             }
                             setDragPreview(null);
                           }}
-                          className={`relative h-12 border border-[#e5e5e5] bg-white p-1 ${previewInvalid && dragPreview?.weekday === weekday && dragPreview?.room === room.name ? "cursor-not-allowed" : ""} ${dragPreview &&
+                          className={`relative h-16 border border-[#e5e5e5] bg-white p-1.5 ${previewInvalid && dragPreview?.weekday === weekday && dragPreview?.room === room.name ? "cursor-not-allowed" : ""} ${dragPreview &&
                             dragPreview.weekday === weekday &&
                             dragPreview.room === room.name &&
                             dragPreview.index < sessionStartIndex + span &&
@@ -3126,7 +3145,7 @@ function SpreadsheetTimetable({ data, update }: Props) {
                             }}
                             onDragEnd={() => { setDragPreview(null); dragRef.current = null; }}
                             onDoubleClick={() => editSession(session)}
-                            className="relative h-full cursor-grab rounded-xl border px-2 py-1 font-bold shadow-sm"
+                            className="relative h-full cursor-grab rounded-xl border px-3 py-2 font-bold shadow-sm"
                             style={{ backgroundColor: teacherTint, borderColor: teacherColor, color: "#ffffff" }}
                           >
                             <button
@@ -3146,6 +3165,9 @@ function SpreadsheetTimetable({ data, update }: Props) {
                             </span>
                             <span className="block truncate opacity-80">
                               {session.teacher}
+                            </span>
+                            <span className="block truncate text-[9px] opacity-90">
+                              {sessionLevel || "بدون مستوى"} • {session.time}–{session.endTime || "17:00"}
                             </span>
                             <button
                               type="button"
@@ -3190,7 +3212,7 @@ function SpreadsheetTimetable({ data, update }: Props) {
                           key={slot}
                           onDragOver={(event) => {
                             event.preventDefault();
-                            event.dataTransfer.dropEffect = previewInvalid ? "none" : "move";
+                            updateDragTarget(event, weekday, room.name, slotIndex, 1);
                           }}
                           onDragEnter={(event) =>
                             (() => {
@@ -3234,7 +3256,7 @@ function SpreadsheetTimetable({ data, update }: Props) {
                             });
                             setOpen(true);
                           }}
-                          className={`h-12 border border-[#f0f0f0] hover:bg-[#f5f7ff] ${previewInvalid && dragPreview?.weekday === weekday && dragPreview?.room === room.name ? "cursor-not-allowed" : ""} ${dragPreview?.weekday === weekday &&
+                          className={`h-16 border border-[#f0f0f0] hover:bg-[#f5f7ff] ${previewInvalid && dragPreview?.weekday === weekday && dragPreview?.room === room.name ? "cursor-not-allowed" : ""} ${dragPreview?.weekday === weekday &&
                             dragPreview.room === room.name &&
                             dragPreview.index <= slotIndex &&
                             dragPreview.index + dragPreview.duration > slotIndex
