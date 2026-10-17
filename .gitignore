@@ -40,6 +40,9 @@ yarn-error.log*
 *.db
 *.db-*
 *.db.bak*
+# Temporary Vercel demo database. It contains dummy data only and is copied
+# into the writable /tmp directory at runtime.
+!/dev.db
 
 # vercel
 .vercel

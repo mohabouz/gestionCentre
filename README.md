@@ -82,6 +82,14 @@ Authentication sessions are stored in SQLite and delivered through an HTTP-only 
 
 Vercel cannot persist or share a local SQLite file between serverless function instances. The web deployment therefore uses a hosted Turso/libSQL database, while local development and the packaged Windows application continue using `better-sqlite3` and their local `DATABASE_URL`.
 
+### Temporary demo database
+
+Until Turso is configured, Vercel copies the bundled root `dev.db` (dummy data only) into its writable `/tmp` directory. This allows temporary preview deployments, but it is not durable storage: changes, newly created sessions, and users can disappear on a cold start, and separate function instances may see different copies. Never place real student data or real credentials in the bundled database.
+
+The root `dev.db` is intentionally tracked only for this temporary demo. Remove the `!/dev.db` exception from `.gitignore` after Turso is enabled.
+
+### Persistent production database
+
 1. Create a Turso database and an authentication token.
 2. Apply every SQL file under `prisma/migrations/` to the empty Turso database in filename order. Prisma Migrate itself remains configured for the local SQLite development database; remote libSQL migrations are applied with the Turso CLI.
 3. Add these variables to the Vercel project for Production, Preview, and Development as appropriate:
