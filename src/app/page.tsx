@@ -6,10 +6,10 @@ import {
   Bell,
   BookOpen,
   CalendarDays,
+  CalendarRange,
   ChevronLeft,
   GraduationCap,
   Package,
-  Plus,
   ReceiptText,
   TrendingUp,
   Users,
@@ -27,8 +27,11 @@ import {
   Enrollment,
   Expense,
   Payment,
+  PaymentCollection,
   Student,
   Teacher,
+  currentMonth,
+  formatBillingMonth,
   money,
 } from "@/lib/centman-store";
 import { useAuth } from "@/components/auth-provider";
@@ -40,6 +43,7 @@ type DashboardData = {
   enrollments: Enrollment[];
   expenses: Expense[];
   payments: Payment[];
+  collections: PaymentCollection[];
 };
 const emptyData: DashboardData = {
   students: [],
@@ -48,6 +52,7 @@ const emptyData: DashboardData = {
   enrollments: [],
   expenses: [],
   payments: [],
+  collections: [],
 };
 type Metric = "التسجيلات" | "الإيرادات";
 type ChartRange = "يومي" | "أسبوعي" | "شهري";
@@ -56,6 +61,7 @@ export default function Home() {
   const [data, setData] = useState<DashboardData>(emptyData);
   const [metric, setMetric] = useState<Metric>("التسجيلات");
   const [chartRange, setChartRange] = useState<ChartRange>("يومي");
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [toast, setToast] = useState("جاري تحميل البيانات...");
   const { user } = useAuth();
   const canViewFinance = user?.role === "SUPER_ADMIN";
@@ -70,14 +76,22 @@ export default function Home() {
       })
       .catch(() => setToast("تعذر تحميل بيانات لوحة التحكم"));
   }, []);
-  const income = data.payments.reduce(
-    (sum, payment) => sum + payment.amount,
+  const monthCollections = data.collections.filter((collection) =>
+    collection.date.startsWith(selectedMonth),
+  );
+  const income = monthCollections.reduce(
+    (sum, collection) => sum + collection.amount,
     0,
   );
-  const expenses = data.expenses.reduce(
-    (sum, expense) => sum + expense.amount,
-    0,
-  );
+  const expenses = data.expenses
+    .filter((expense) => expense.date.startsWith(selectedMonth))
+    .reduce((sum, expense) => sum + expense.amount, 0);
+  const registrationIncome = monthCollections.reduce((sum, collection) => {
+    const payment = data.payments.find(
+      (item) => item.id === collection.paymentId,
+    );
+    return payment?.month.includes("رسوم") ? sum + collection.amount : sum;
+  }, 0);
   const lateStudents = data.students.filter((student) => student.due > 0);
   const enrollmentCounts = data.courses
     .map((course) => ({
@@ -90,29 +104,51 @@ export default function Home() {
   const chart = buildChart(
     data.students,
     data.enrollments,
-    data.payments,
+    data.collections,
     metric,
     chartRange,
   );
   const kpis = [
-    { label: "صافي الربح", value: money(income - expenses), icon: TrendingUp, tone: "bg-[#e7f7ee] text-[#168653]" },
-    { label: "إجمالي المصروفات", value: money(expenses), icon: WalletCards, tone: "bg-[#fff0ed] text-[#d56558]" },
-    { label: "رسوم التسجيل", value: money(data.payments.filter((payment) => payment.month.includes("رسوم")).reduce((sum, payment) => sum + payment.amount, 0)), icon: ReceiptText, tone: "bg-[#fff6d8] text-[#a08500]" },
-    { label: "الدفوعات الشهرية", value: money(income), icon: WalletCards, tone: "bg-[#e8efff] text-[#4c73c8]" },
-    { label: "إجمالي الدخل", value: money(income), icon: TrendingUp, tone: "bg-[#eeeaff] text-[#6658bf]" },
+    { label: "المبالغ المحصلة", value: money(income), icon: WalletCards, tone: "bg-[#e8efff] text-[#4c73c8]" },
+    { label: "المصروفات", value: money(expenses), icon: ReceiptText, tone: "bg-[#fff0ed] text-[#d56558]" },
+    { label: "الصافي", value: money(income - expenses), icon: TrendingUp, tone: "bg-[#e7f7ee] text-[#168653]" },
+    { label: "رسوم التسجيل المحصلة", value: money(registrationIncome), icon: ReceiptText, tone: "bg-[#fff6d8] text-[#a08500]" },
   ];
   return (
     <CentmanShell notificationStudents={data.students}>
       <div className="mx-auto max-w-[1450px]">
-        <PageTitle eyebrow="نظرة عامة" title="لوحة التحكم" />
+        <PageTitle
+          eyebrow="نظرة عامة"
+          title="لوحة التحكم"
+          action={canViewFinance ? (
+            <label className="flex min-w-[230px] items-center gap-3 rounded-2xl border border-[#dfe5e1] bg-white px-4 py-3 shadow-sm">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eef0ff] text-[#5054c0]">
+                <CalendarRange size={18} />
+              </span>
+              <span className="flex-1">
+                <span className="block text-[10px] font-bold text-[#829087]">
+                  فترة التقرير المالي
+                </span>
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(event) =>
+                    event.target.value && setSelectedMonth(event.target.value)
+                  }
+                  className="mt-0.5 w-full bg-transparent text-sm font-black text-[#26352d] outline-none"
+                />
+              </span>
+            </label>
+          ) : undefined}
+        />
         {canViewFinance && <div className="mb-4 flex items-center gap-3">
           <div className="h-px flex-1 bg-[#e5e5e5]" />
-          <span className="text-[11px] font-bold text-[#a0a0a0]">
-            الأداء المالي • {chartRange}
+          <span className="rounded-full bg-[#eef0ff] px-4 py-2 text-[11px] font-black text-[#5054c0]">
+            ملخص {formatBillingMonth(selectedMonth)}
           </span>
           <div className="h-px flex-1 bg-[#e5e5e5]" />
         </div>}
-        {canViewFinance && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {canViewFinance && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {kpis.map(({ label, value, icon: Icon, tone }) => (
             <Card key={label} className="relative overflow-hidden">
               <div className="flex items-start justify-between gap-3">
@@ -121,6 +157,9 @@ export default function Home() {
                   <strong className="mt-4 block text-2xl font-black text-[#292929]">
                     {value}
                   </strong>
+                  <span className="mt-2 block text-[10px] font-bold text-[#9aa59f]">
+                    خلال {formatBillingMonth(selectedMonth)}
+                  </span>
                 </div>
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tone}`}>
                   <Icon size={19} strokeWidth={2.2} />
@@ -132,7 +171,7 @@ export default function Home() {
         <div className="my-7 flex items-center gap-3">
           <div className="h-px flex-1 bg-[#e5e5e5]" />
           <span className="text-[11px] font-bold text-[#a0a0a0]">
-            المؤشرات التشغيلية
+            المؤشرات التشغيلية • الإجماليات الحالية
           </span>
           <div className="h-px flex-1 bg-[#e5e5e5]" />
         </div>
@@ -279,7 +318,7 @@ export default function Home() {
 function buildChart(
   students: Student[],
   enrollments: Enrollment[],
-  payments: Payment[],
+  collections: PaymentCollection[],
   metric: Metric,
   range: ChartRange,
 ) {
@@ -295,9 +334,9 @@ function buildChart(
     return range === "يومي" ? length - 1 - age : range === "أسبوعي" ? length - 1 - Math.floor(age / 7) : length - 1 - monthAge;
   };
   if (metric === "الإيرادات") {
-    payments.forEach((payment) => {
-      const index = bucketFor(payment.date);
-      if (index >= 0 && index < length) values[index] += payment.amount;
+    collections.forEach((collection) => {
+      const index = bucketFor(collection.date);
+      if (index >= 0 && index < length) values[index] += collection.amount;
     });
   } else {
     const studentDates = new Map(

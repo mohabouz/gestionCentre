@@ -77,7 +77,7 @@ export function LatePaymentNotifications({
                 {lateStudents.slice(0, 6).map((student) => (
                   <Link
                     key={student.id}
-                    href="/late-students"
+                    href={`/late-students?pay=${student.id}`}
                     onClick={() => setOpen(false)}
                     className="flex items-start gap-3 rounded-xl p-3 transition hover:bg-[#faf5f3]"
                   >

@@ -11,6 +11,7 @@ import { resolveSessionCourse } from "@/lib/session-course";
 
 import { Input, Modal } from "@/components/sections/shared-ui";
 import type { Props } from "@/components/sections/types";
+import { DailySchedulePoster } from "@/components/sections/daily-schedule-poster";
 
 export function SpreadsheetTimetable({ data, update }: Props) {
   const weekdays = [
@@ -327,26 +328,29 @@ export function SpreadsheetTimetable({ data, update }: Props) {
         eyebrow="التنظيم"
         title="الجدول الزمني"
         action={
-          <Button
-            onClick={() => {
-              setEditingSession(null);
-              setForm({
-                title: "",
-                teacher: data.teachers[0]?.name || "",
-                course: data.courses[0]?.name || "",
-                courseId: data.courses[0]?.id ?? null,
-                weekday: "الاثنين",
-                room: data.rooms[0]?.name || "",
-                time: "16:00",
-                endTime: "17:00",
-                date: today,
-              });
-              setOpen(true);
-            }}
-          >
-            <Plus size={15} className="ml-2 inline" />
-            حجز حصة
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <DailySchedulePoster data={data} />
+            <Button
+              onClick={() => {
+                setEditingSession(null);
+                setForm({
+                  title: "",
+                  teacher: data.teachers[0]?.name || "",
+                  course: data.courses[0]?.name || "",
+                  courseId: data.courses[0]?.id ?? null,
+                  weekday: "الاثنين",
+                  room: data.rooms[0]?.name || "",
+                  time: "16:00",
+                  endTime: "17:00",
+                  date: today,
+                });
+                setOpen(true);
+              }}
+            >
+              <Plus size={15} className="ml-2 inline" />
+              حجز حصة
+            </Button>
+          </div>
         }
       />
       <Card className="mb-5">

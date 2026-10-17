@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, MessageCircle, Phone } from "lucide-react";
 import { Button, Card, PageTitle } from "@/components/centman-shell";
 import { Payment, PaymentCollection, Student, money, today } from "@/lib/centman-store";
@@ -11,9 +12,12 @@ import { EmptyState, Table, Td, Th } from "@/components/sections/shared-ui";
 import type { Props } from "@/components/sections/types";
 import { LatePaymentModal } from "@/components/sections/late-payment-modal";
 import { LatePaymentDetails } from "@/components/sections/late-payment-details";
+import { latePaymentMessage, whatsappNumber } from "@/lib/late-payment-message";
 
 
 export function LateStudents({ data, update }: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const late = data.students.filter((s) => s.due > 0);
   const [payingStudent, setPayingStudent] = useState<Student | null>(null);
   const [detailsStudent, setDetailsStudent] = useState<Student | null>(null);
@@ -21,6 +25,16 @@ export function LateStudents({ data, update }: Props) {
     data.payments
       .filter((payment) => payment.studentId === studentId && payment.status !== "ملغاة" && remainingPaymentAmount(payment) > 0)
       .sort((left, right) => (paymentBillingMonth(left) || left.date).localeCompare(paymentBillingMonth(right) || right.date));
+  useEffect(() => {
+    const requestedStudentId = Number(searchParams.get("pay"));
+    if (!requestedStudentId) return;
+    const student = data.students.find(
+      (item) => item.id === requestedStudentId && item.due > 0,
+    );
+    if (!student) return;
+    setPayingStudent(student);
+    router.replace("/late-students", { scroll: false });
+  }, [data.students, router, searchParams]);
   const registerPartialPayment = (student: Student, requestedAmount: number, method: NonNullable<Payment["method"]>) => {
     const invoices = outstandingPayments(student.id);
     const totalDue = invoices.reduce((sum, payment) => sum + remainingPaymentAmount(payment), 0);
@@ -80,7 +94,16 @@ export function LateStudents({ data, update }: Props) {
           <Th>المستحق</Th>
           <Th>تواصل</Th>
           <Th>إجراء</Th>
-          {late.map((s) => (
+          {late.map((s) => {
+            const invoices = outstandingPayments(s.id);
+            const reminder = latePaymentMessage({
+              student: s,
+              payments: invoices,
+              courses: data.courses,
+              enrollments: data.enrollments,
+              levels: data.levels,
+            });
+            return (
             <tr key={s.id}>
               <Td>
                 <button
@@ -98,7 +121,7 @@ export function LateStudents({ data, update }: Props) {
                 <div className="flex gap-2">
                   <a
                     aria-label="واتساب"
-                    href={`https://wa.me/213${s.phone.slice(1)}?text=${encodeURIComponent(`السلام عليكم، نذكركم بدفع مستحقات ${s.name}`)}`}
+                    href={`https://wa.me/${whatsappNumber(s.whatsapp || s.phone)}?text=${encodeURIComponent(reminder)}`}
                     target="_blank"
                     className="rounded-lg bg-[#e9f8ef] p-2 text-[#00a060]"
                   >
@@ -129,7 +152,8 @@ export function LateStudents({ data, update }: Props) {
                 </div>
               </Td>
             </tr>
-          ))}
+            );
+          })}
         </Table>
         {!late.length && <EmptyState text="لا توجد مستحقات متأخرة" />}
       </Card>
