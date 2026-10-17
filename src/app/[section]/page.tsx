@@ -180,6 +180,7 @@ export default function SectionPage() {
         students: data.students,
         teachers: data.teachers,
         courses: data.courses,
+        levels: data.levels,
         enrollments: data.enrollments,
       }}
       update={(next, message) => update({ ...data, ...next }, message)}
