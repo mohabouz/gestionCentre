@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { initial, type Data } from "@/lib/section-data";
 import { refreshDraftPayouts } from "@/lib/payroll";
-import type { Course, Expense, Room, Session, Teacher } from "@/lib/centman-store";
+import type {
+  Attendance,
+  Course,
+  Expense,
+  Room,
+  Session,
+  Teacher,
+} from "@/lib/centman-store";
 import { resolveSessionCourse } from "@/lib/session-course";
 
 export function useSectionData() {
@@ -375,6 +382,34 @@ export function useSectionData() {
     }
   };
 
+  const saveAttendance = async (
+    sessionId: number,
+    occurrenceDate: string,
+    records: Array<Pick<Attendance, "studentId" | "status">>,
+  ) => {
+    try {
+      const response = await fetch("/api/attendance", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, occurrenceDate, records }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+      await refreshAfterMutation();
+      setToast("تم حفظ الحضور");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(
+        error instanceof Error && error.message !== "database"
+          ? error.message
+          : "تعذر حفظ الحضور",
+      );
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
   return {
     data,
     update,
@@ -388,6 +423,7 @@ export function useSectionData() {
     saveSession,
     saveRoom,
     deleteRoom,
+    saveAttendance,
     toast,
   };
 }

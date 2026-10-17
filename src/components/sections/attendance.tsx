@@ -63,7 +63,7 @@ function offsetDate(value: string, offset: number) {
   return dateValue(date);
 }
 
-export function Attendance({ data, update }: Props) {
+export function Attendance({ data, saveAttendance: persistAttendance }: Props) {
   const [occurrenceDate, setOccurrenceDate] = useState(today);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [statuses, setStatuses] = useState<
@@ -159,29 +159,15 @@ export function Attendance({ data, update }: Props) {
     });
   };
 
-  const saveAttendance = () => {
+  const saveAttendance = async () => {
     if (!selectedSession || registeredCount !== selectedStudents.length) return;
-
-    const otherRecords = data.attendances.filter(
-      (item) =>
-        item.sessionId !== selectedSession.id ||
-        item.occurrenceDate !== occurrenceDate,
-    );
-    const firstId =
-      data.attendances.reduce((maximum, item) => Math.max(maximum, item.id), 0) + 1;
-    const records: AttendanceRecord[] = selectedStudents.map((student, index) => ({
-      id: firstId + index,
-      sessionId: selectedSession.id,
+    const records = selectedStudents.map((student) => ({
       studentId: student.id,
-      occurrenceDate,
       status: statuses[student.id]!,
     }));
-
-    update(
-      { ...data, attendances: [...otherRecords, ...records] },
-      "تم حفظ الحضور",
-    );
-    closeAttendance();
+    if (await persistAttendance?.(selectedSession.id, occurrenceDate, records)) {
+      closeAttendance();
+    }
   };
 
   return (

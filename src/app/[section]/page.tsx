@@ -34,6 +34,7 @@ export default function SectionPage() {
     saveSession,
     saveRoom,
     deleteRoom,
+    saveAttendance,
     toast,
   } = useSectionData();
   const { user } = useAuth();
@@ -112,7 +113,7 @@ export default function SectionPage() {
       deleteRoom={deleteRoom}
     />
   ) : section === "attendance" ? (
-    <Attendance data={data} update={update} />
+    <Attendance data={data} update={update} saveAttendance={saveAttendance} />
   ) : (
     <SettingsPage />
   );
