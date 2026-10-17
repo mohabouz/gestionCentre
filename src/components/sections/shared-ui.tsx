@@ -1,7 +1,7 @@
 "use client";
 
-import { Children, isValidElement, useState } from "react";
-import { Edit3, Trash2, X } from "lucide-react";
+import { Children, isValidElement, useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, Edit3, Trash2, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/centman-shell";
 import { Payment, money } from "@/lib/centman-store";
 
@@ -68,6 +68,8 @@ export function Input({
 }
 
 export function Table({ children }: { children: React.ReactNode }) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const items = Children.toArray(children);
   const headerItems: React.ReactNode[] = [];
   let rowStart = 0;
@@ -77,16 +79,77 @@ export function Table({ children }: { children: React.ReactNode }) {
     headerItems.push(item);
     rowStart += 1;
   }
+  const rows = items.slice(rowStart);
+  const rowSignature = rows
+    .map((row, index) =>
+      isValidElement(row) && row.key != null ? String(row.key) : String(index),
+    )
+    .join("|");
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const visibleRows = rows.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [pageSize, rowSignature]);
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] text-right text-xs">
-        <thead>
-          <tr className="border-b border-[#e9efeb] text-[#96a69d]">
-            {headerItems}
-          </tr>
-        </thead>
-        <tbody>{items.slice(rowStart)}</tbody>
-      </table>
+    <div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] text-right text-xs">
+          <thead>
+            <tr className="border-b border-[#e9efeb] text-[#96a69d]">
+              {headerItems}
+            </tr>
+          </thead>
+          <tbody>{visibleRows}</tbody>
+        </table>
+      </div>
+      {rows.length > 10 && (
+        <div className="mt-4 flex flex-col items-center justify-between gap-3 border-t border-[#edf1ee] pt-4 sm:flex-row">
+          <p className="text-[11px] font-bold text-[#84938b]">
+            عرض {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, rows.length)} من {rows.length}
+          </p>
+          <div dir="ltr" className="flex items-center gap-2">
+            <label dir="rtl" className="flex items-center gap-2 text-[10px] font-bold text-[#84938b]">
+              في الصفحة
+              <select
+                value={pageSize}
+                onChange={(event) => setPageSize(Number(event.target.value))}
+                className="rounded-lg border border-[#dce7df] bg-white px-2 py-1.5 text-xs text-[#53685d] outline-none"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() => setPage((value) => Math.max(1, value - 1))}
+              disabled={currentPage === 1}
+              aria-label="الصفحة السابقة"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#dce7df] bg-white text-[#53685d] disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              <ChevronLeft size={15} />
+            </button>
+            <span dir="rtl" className="min-w-16 text-center text-[11px] font-black text-[#44594e]">
+              {currentPage} / {pageCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
+              disabled={currentPage === pageCount}
+              aria-label="الصفحة التالية"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#dce7df] bg-white text-[#53685d] disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

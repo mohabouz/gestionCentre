@@ -33,7 +33,7 @@ export function registerPaymentCollection(
     ? data.payments.map((item) => item.id === paymentId ? updatedPayment : item)
     : [...data.payments, updatedPayment];
   const collections = [...data.collections, {
-    id: Date.now(),
+    id: Math.max(0, ...data.collections.map((item) => item.id)) + 1,
     paymentId,
     amount: paidNow,
     date: updatedPayment.date,

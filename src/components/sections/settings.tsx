@@ -6,7 +6,7 @@ import { AppLanguage, useLanguage } from "@/components/language-provider";
 import { useAuth } from "@/components/auth-provider";
 
 
-import { Input, Modal } from "@/components/sections/shared-ui";
+import { Input, Modal, Table, Td, Th } from "@/components/sections/shared-ui";
 import type { AdminUser } from "@/components/sections/types";
 import { LogoDropzone } from "@/components/sections/settings-logo";
 
@@ -292,12 +292,10 @@ export function SettingsPage() {
               </div>
               {userMessage && <span className="text-xs font-bold text-[#008a55]">{userMessage}</span>}
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[620px] text-right text-xs">
-                <thead><tr className="border-b border-[#e9efeb] text-[#96a69d]"><th className="p-3">الاسم</th><th className="p-3">اسم المستخدم</th><th className="p-3">الصلاحية</th><th className="p-3">الحالة</th><th className="p-3">إجراء</th></tr></thead>
-                <tbody>{managedUsers.map((account) => <tr key={account.id} className="border-b border-[#eef3ef]"><td className="p-3 font-bold">{account.name}</td><td className="p-3">{account.username}</td><td className="p-3">{account.role === "SUPER_ADMIN" ? "Super-admin" : "Admin"}</td><td className="p-3"><span className={account.active ? "text-[#008a55]" : "text-[#c4584e]"}>{account.active ? "نشط" : "متوقف"}</span></td><td className="p-3"><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setEditingUser(account)} className="rounded-lg bg-[#e4e8fd] px-2 py-1 text-[10px] font-bold text-[#5054c0]">تعديل</button><button type="button" onClick={() => updateUser({ active: !account.active }, account)} disabled={account.id === user.id} className="rounded-lg bg-[#eff8f2] px-2 py-1 text-[10px] font-bold text-[#008a55] disabled:opacity-40">{account.active ? "تعطيل" : "تفعيل"}</button><button type="button" onClick={() => { setResetUser(account); setResetPassword(""); setResetConfirmation(""); }} className="rounded-lg bg-[#faf4de] px-2 py-1 text-[10px] font-bold text-[#a08500]">تغيير كلمة المرور</button></div></td></tr>)}</tbody>
-              </table>
-            </div>
+            <Table>
+              <Th>الاسم</Th><Th>اسم المستخدم</Th><Th>الصلاحية</Th><Th>الحالة</Th><Th>إجراء</Th>
+              {managedUsers.map((account) => <tr key={account.id}><Td className="font-bold">{account.name}</Td><Td>{account.username}</Td><Td>{account.role === "SUPER_ADMIN" ? "Super-admin" : "Admin"}</Td><Td><span className={account.active ? "text-[#008a55]" : "text-[#c4584e]"}>{account.active ? "نشط" : "متوقف"}</span></Td><Td><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setEditingUser(account)} className="rounded-lg bg-[#e4e8fd] px-2 py-1 text-[10px] font-bold text-[#5054c0]">تعديل</button><button type="button" onClick={() => updateUser({ active: !account.active }, account)} disabled={account.id === user.id} className="rounded-lg bg-[#eff8f2] px-2 py-1 text-[10px] font-bold text-[#008a55] disabled:opacity-40">{account.active ? "تعطيل" : "تفعيل"}</button><button type="button" onClick={() => { setResetUser(account); setResetPassword(""); setResetConfirmation(""); }} className="rounded-lg bg-[#faf4de] px-2 py-1 text-[10px] font-bold text-[#a08500]">تغيير كلمة المرور</button></div></Td></tr>)}
+            </Table>
           </Card>
         )}
       </div>

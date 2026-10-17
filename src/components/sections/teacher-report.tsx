@@ -3,7 +3,7 @@
 import { Course, Teacher, formatBillingMonth, money } from "@/lib/centman-store";
 
 
-import { EmptyState, Modal } from "@/components/sections/shared-ui";
+import { EmptyState, Modal, Table, Td, Th } from "@/components/sections/shared-ui";
 import type { Data } from "@/lib/section-data";
 
 export function TeacherReport({
@@ -63,37 +63,26 @@ export function TeacherReport({
             </b>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-right text-xs">
-            <thead>
-              <tr className="border-b border-[#e5e5e5]">
-                <th className="p-3">الطالب</th>
-                <th className="p-3">القسم/الدورة</th>
-                <th className="p-3">المدفوع</th>
-                <th className="p-3">حصة الأستاذ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(({ student, course, subject, collectedAmount }, index) => (
-                <tr
-                  key={`${student.id}-${course.id}-${subject.id}-${index}`}
-                  className="border-b border-[#f1f1f1]"
-                >
-                  <td className="p-3">{student.name}</td>
-                  <td className="p-3">
-                    {course.type === "باقة"
-                      ? `${course.name} • ${subject.name}`
-                      : subject.name}
-                  </td>
-                  <td className="p-3">{money(collectedAmount)}</td>
-                  <td className="p-3 font-bold text-[#5054c0]">
-                    {money(Math.round((collectedAmount * teacher.commission) / 100))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <Th>التلميذ</Th>
+          <Th>القسم/الدورة</Th>
+          <Th>المدفوع</Th>
+          <Th>حصة الأستاذ</Th>
+          {rows.map(({ student, course, subject, collectedAmount }, index) => (
+            <tr key={`${student.id}-${course.id}-${subject.id}-${index}`}>
+              <Td>{student.name}</Td>
+              <Td>
+                {course.type === "باقة"
+                  ? `${course.name} • ${subject.name}`
+                  : subject.name}
+              </Td>
+              <Td>{money(collectedAmount)}</Td>
+              <Td className="font-bold text-[#5054c0]">
+                {money(Math.round((collectedAmount * teacher.commission) / 100))}
+              </Td>
+            </tr>
+          ))}
+        </Table>
         {!rows.length && (
           <EmptyState text="لا توجد تسجيلات مرتبطة بهذا الأستاذ بعد" />
         )}

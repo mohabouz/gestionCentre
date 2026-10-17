@@ -6,7 +6,9 @@ import { CourseManagement } from "@/components/course-management";
 import { LevelManagement } from "@/components/level-management";
 import { useAuth } from "@/components/auth-provider";
 import { Attendance } from "@/components/sections/attendance";
+import { AnnualFees } from "@/components/sections/annual-fees";
 import { Expenses } from "@/components/sections/expenses";
+import { EnrollmentRegistrations } from "@/components/sections/enrollment-registrations";
 import { LateStudents } from "@/components/sections/late-students";
 import { Payments } from "@/components/sections/payments";
 import { Payouts } from "@/components/sections/payouts";
@@ -27,6 +29,7 @@ export default function SectionPage() {
       "expenses",
       "registrations",
       "payments",
+      "annual-fees",
       "late-students",
       "payouts",
       "settings",
@@ -64,8 +67,12 @@ export default function SectionPage() {
     />
   ) : section === "expenses" ? (
     <Expenses data={data} update={update} />
-  ) : section === "registrations" || section === "payments" ? (
-    <Payments data={data} update={update} monthly={section === "payments"} />
+  ) : section === "registrations" ? (
+    <EnrollmentRegistrations data={data} update={update} />
+  ) : section === "payments" ? (
+    <Payments data={data} update={update} monthly />
+  ) : section === "annual-fees" ? (
+    <AnnualFees data={data} update={update} />
   ) : section === "late-students" ? (
     <LateStudents data={data} update={update} />
   ) : section === "payouts" ? (

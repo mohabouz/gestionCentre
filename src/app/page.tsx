@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bell,
   BookOpen,
@@ -57,11 +57,18 @@ const emptyData: DashboardData = {
 type Metric = "التسجيلات" | "الإيرادات";
 type ChartRange = "يومي" | "أسبوعي" | "شهري";
 
+function shiftMonth(value: string, offset: number) {
+  const [year, month] = value.split("-").map(Number);
+  const date = new Date(year, month - 1 + offset, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export default function Home() {
   const [data, setData] = useState<DashboardData>(emptyData);
   const [metric, setMetric] = useState<Metric>("التسجيلات");
   const [chartRange, setChartRange] = useState<ChartRange>("يومي");
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const monthPicker = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState("جاري تحميل البيانات...");
   const { user } = useAuth();
   const canViewFinance = user?.role === "SUPER_ADMIN";
@@ -92,6 +99,9 @@ export default function Home() {
     );
     return payment?.month.includes("رسوم") ? sum + collection.amount : sum;
   }, 0);
+  const visibleMonths = [-2, -1, 0, 1, 2].map((offset) =>
+    shiftMonth(selectedMonth, offset),
+  );
   const lateStudents = data.students.filter((student) => student.due > 0);
   const enrollmentCounts = data.courses
     .map((course) => ({
@@ -117,30 +127,89 @@ export default function Home() {
   return (
     <CentmanShell notificationStudents={data.students}>
       <div className="mx-auto max-w-[1450px]">
-        <PageTitle
-          eyebrow="نظرة عامة"
-          title="لوحة التحكم"
-          action={canViewFinance ? (
-            <label className="flex min-w-[230px] items-center gap-3 rounded-2xl border border-[#dfe5e1] bg-white px-4 py-3 shadow-sm">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eef0ff] text-[#5054c0]">
-                <CalendarRange size={18} />
-              </span>
-              <span className="flex-1">
-                <span className="block text-[10px] font-bold text-[#829087]">
-                  فترة التقرير المالي
-                </span>
-                <input
-                  type="month"
-                  value={selectedMonth}
-                  onChange={(event) =>
-                    event.target.value && setSelectedMonth(event.target.value)
+        <PageTitle eyebrow="نظرة عامة" title="لوحة التحكم" />
+        {canViewFinance && (
+          <div className="mb-6 flex items-stretch gap-2 rounded-2xl border border-[#dfe8e3] bg-[#f7faf8] p-2">
+            <div
+              dir="ltr"
+              className="flex min-w-0 flex-1 items-stretch gap-1 overflow-x-auto"
+            >
+              {visibleMonths.map((month) => {
+                const selected = month === selectedMonth;
+                const isCurrent = month === currentMonth;
+                const [year] = month.split("-");
+                const monthName = new Intl.DateTimeFormat("ar-MA", {
+                  month: "long",
+                  timeZone: "UTC",
+                }).format(new Date(`${month}-01T00:00:00Z`));
+                return (
+                  <button
+                    key={month}
+                    type="button"
+                    dir="rtl"
+                    onClick={() => setSelectedMonth(month)}
+                    className={`min-w-[105px] flex-1 rounded-xl px-3 py-2.5 text-center transition ${
+                      selected
+                        ? "bg-[#5054c0] text-white shadow-[0_5px_14px_rgba(80,84,192,0.24)]"
+                        : isCurrent
+                          ? "border border-[#99ccb2] bg-[#eaf7f0] text-[#087849] hover:bg-[#e0f2e8]"
+                          : "text-[#63776c] hover:bg-white"
+                    }`}
+                  >
+                    <span className="block text-[10px] font-bold">
+                      {isCurrent ? "هذا الشهر" : "التقرير المالي"}
+                    </span>
+                    <span className="mt-1 block text-sm font-black">
+                      {monthName}
+                    </span>
+                    <span
+                      className={`block text-[9px] font-bold ${
+                        selected
+                          ? "text-white/75"
+                          : isCurrent
+                            ? "text-[#4f9472]"
+                            : "text-[#9aa9a1]"
+                      }`}
+                    >
+                      {year}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="relative flex w-12 shrink-0">
+              <button
+                type="button"
+                title="اختيار شهر آخر"
+                onClick={() => {
+                  const input = monthPicker.current;
+                  if (!input) return;
+                  try {
+                    input.showPicker();
+                  } catch {
+                    input.focus();
+                    input.click();
                   }
-                  className="mt-0.5 w-full bg-transparent text-sm font-black text-[#26352d] outline-none"
-                />
-              </span>
-            </label>
-          ) : undefined}
-        />
+                }}
+                className="flex w-full cursor-pointer items-center justify-center rounded-xl border border-[#dce7df] bg-white text-[#5054c0] transition hover:border-[#aeb1df] hover:bg-[#f0f1ff]"
+              >
+                <CalendarRange size={20} />
+                <span className="sr-only">اختيار شهر آخر</span>
+              </button>
+              <input
+                ref={monthPicker}
+                type="month"
+                value={selectedMonth}
+                onChange={(event) =>
+                  event.target.value && setSelectedMonth(event.target.value)
+                }
+                className="pointer-events-none absolute inset-0 opacity-0"
+                tabIndex={-1}
+                aria-label="اختيار شهر آخر"
+              />
+            </div>
+          </div>
+        )}
         {canViewFinance && <div className="mb-4 flex items-center gap-3">
           <div className="h-px flex-1 bg-[#e5e5e5]" />
           <span className="rounded-full bg-[#eef0ff] px-4 py-2 text-[11px] font-black text-[#5054c0]">
