@@ -2734,14 +2734,14 @@ function SpreadsheetTimetable({ data, update }: Props) {
     return `${String(Math.floor(totalMinutes / 60)).padStart(2, "0")}:${String(totalMinutes % 60).padStart(2, "0")}`;
   };
   const teacherPalette = [
-    ["#1d4ed8", "#1e3a8a"],
-    ["#7e22ce", "#581c87"],
-    ["#047857", "#064e3b"],
-    ["#be185d", "#831843"],
-    ["#b45309", "#78350f"],
-    ["#0e7490", "#164e63"],
-    ["#b91c1c", "#7f1d1d"],
-    ["#4338ca", "#312e81"],
+    ["#1d4ed8", "#2563eb"],
+    ["#6d28d9", "#7c3aed"],
+    ["#047857", "#059669"],
+    ["#be185d", "#db2777"],
+    ["#b45309", "#d97706"],
+    ["#0e7490", "#0891b2"],
+    ["#b91c1c", "#dc2626"],
+    ["#4338ca", "#4f46e5"],
   ] as const;
   const teacherColors = (teacher: string) => {
     const teacherIndex = data.teachers.findIndex((item) => item.name === teacher);
@@ -3167,7 +3167,7 @@ function SpreadsheetTimetable({ data, update }: Props) {
                               {session.teacher}
                             </span>
                             <span className="block truncate text-[9px] opacity-90">
-                              {sessionLevel || "بدون مستوى"} • {session.time}–{session.endTime || "17:00"}
+                              {sessionLevel || "بدون مستوى"}
                             </span>
                             <button
                               type="button"
