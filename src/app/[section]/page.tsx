@@ -21,7 +21,14 @@ import { useSectionData } from "@/hooks/use-section-data";
 export default function SectionPage() {
   const pathname = usePathname();
   const section = pathname.split("/")[1] || "students";
-  const { data, update, deleteStudent, toast } = useSectionData();
+  const {
+    data,
+    update,
+    deleteStudent,
+    createExpense,
+    deleteExpense,
+    toast,
+  } = useSectionData();
   const { user } = useAuth();
   const restricted =
     user?.role === "ADMIN" &&
@@ -66,7 +73,12 @@ export default function SectionPage() {
       onUpdate={(levels) => update({ ...data, levels }, "تم حفظ تعديلات المستوى")}
     />
   ) : section === "expenses" ? (
-    <Expenses data={data} update={update} />
+    <Expenses
+      data={data}
+      update={update}
+      createExpense={createExpense}
+      deleteExpense={deleteExpense}
+    />
   ) : section === "registrations" ? (
     <EnrollmentRegistrations data={data} update={update} />
   ) : section === "payments" ? (

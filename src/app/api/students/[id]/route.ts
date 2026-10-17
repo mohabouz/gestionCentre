@@ -7,11 +7,21 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     await requireUser();
     const { id } = await context.params;
     const studentId = Number(id);
-    if (!Number.isInteger(studentId)) return NextResponse.json({ error: "Invalid student id" }, { status: 400 });
+    if (!Number.isInteger(studentId) || studentId <= 0) {
+      return NextResponse.json({ error: "Invalid student id" }, { status: 400 });
+    }
     await prisma.student.delete({ where: { id: studentId } });
-    return NextResponse.json({ success: true });
+    return new Response(null, { status: 204 });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Unable to delete student" }, { status: 500 });
+    const notFound =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2025";
+    return NextResponse.json(
+      { error: notFound ? "Student not found" : "Unable to delete student" },
+      { status: notFound ? 404 : 500 },
+    );
   }
 }

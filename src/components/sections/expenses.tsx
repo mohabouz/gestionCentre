@@ -9,28 +9,21 @@ import { money, today } from "@/lib/centman-store";
 import { Actions, Input, Modal, Table, Td, Th } from "@/components/sections/shared-ui";
 import type { Props } from "@/components/sections/types";
 
-export function Expenses({ data, update }: Props) {
+export function Expenses({ data, createExpense, deleteExpense }: Props) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ title: "", category: "", amount: "" });
-  const save = (e: FormEvent) => {
+  const save = async (e: FormEvent) => {
     e.preventDefault();
-    update(
-      {
-        ...data,
-        expenses: [
-          ...data.expenses,
-          {
-            id: Date.now(),
-            title: form.title,
-            category: form.category,
-            amount: Number(form.amount),
-            date: today,
-          },
-        ],
-      },
-      "تمت إضافة المصروف",
-    );
-    setOpen(false);
+    const saved = await createExpense?.({
+      title: form.title,
+      category: form.category,
+      amount: Number(form.amount),
+      date: today,
+    });
+    if (saved) {
+      setForm({ title: "", category: "", amount: "" });
+      setOpen(false);
+    }
   };
   return (
     <>
@@ -69,15 +62,7 @@ export function Expenses({ data, update }: Props) {
               <Td>{e.date}</Td>
               <Td>
                 <Actions
-                  onDelete={() =>
-                    update(
-                      {
-                        ...data,
-                        expenses: data.expenses.filter((x) => x.id !== e.id),
-                      },
-                      "تم حذف المصروف",
-                    )
-                  }
+                  onDelete={() => deleteExpense?.(e.id)}
                 />
               </Td>
             </tr>

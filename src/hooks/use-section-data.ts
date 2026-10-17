@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { initial, type Data } from "@/lib/section-data";
 import { refreshDraftPayouts } from "@/lib/payroll";
+import type { Expense } from "@/lib/centman-store";
 
 export function useSectionData() {
   const [data, setData] = useState<Data>(initial);
@@ -57,15 +58,119 @@ export function useSectionData() {
   };
 
   const deleteStudent = async (id: number) => {
+    const previous = data;
     const next = {
       ...data,
       students: data.students.filter((student) => student.id !== id),
       enrollments: data.enrollments.filter((enrollment) => enrollment.studentId !== id),
       payments: data.payments.filter((payment) => payment.studentId !== id),
+      collections: data.collections.filter((collection) =>
+        data.payments.every(
+          (payment) => payment.id !== collection.paymentId || payment.studentId !== id,
+        ),
+      ),
+      attendances: data.attendances.filter((attendance) => attendance.studentId !== id),
     };
-    await update(next);
-    setToast("تم حذف الطالب");
+    setData(next);
+
+    try {
+      const deleted = await fetch(`/api/students/${id}`, {
+        method: "DELETE",
+        cache: "no-store",
+      });
+      if (!deleted.ok) {
+        const details = await deleted.json().catch(() => null);
+        throw new Error(details?.error || "database");
+      }
+
+      // Refresh once so local cascade results and the concurrency token match
+      // the database without uploading or rebuilding unrelated tables.
+      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      if (!refreshed.ok) throw new Error("database");
+      stateVersion.current = refreshed.headers.get("etag");
+      setData({ ...initial, ...(await refreshed.json()) });
+      setToast("تم حذف التلميذ");
+    } catch (error) {
+      setData(previous);
+      setToast(
+        error instanceof Error && error.message !== "database"
+          ? error.message
+          : "تعذر حذف التلميذ",
+      );
+    }
+
+    window.setTimeout(() => setToast(""), 2200);
   };
 
-  return { data, update, deleteStudent, toast };
+  const createExpense = async (expense: Omit<Expense, "id">) => {
+    try {
+      const response = await fetch("/api/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(expense),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+
+      setData((current) => ({
+        ...current,
+        expenses: [...current.expenses, result],
+      }));
+      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      if (!refreshed.ok) throw new Error("database");
+      stateVersion.current = refreshed.headers.get("etag");
+      setData({ ...initial, ...(await refreshed.json()) });
+      setToast("تمت إضافة المصروف");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(
+        error instanceof Error && error.message !== "database"
+          ? error.message
+          : "تعذر إضافة المصروف",
+      );
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
+  const deleteExpense = async (id: number) => {
+    const previous = data;
+    setData({
+      ...data,
+      expenses: data.expenses.filter((expense) => expense.id !== id),
+    });
+    try {
+      const response = await fetch(`/api/expenses/${id}`, {
+        method: "DELETE",
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const details = await response.json().catch(() => null);
+        throw new Error(details?.error || "database");
+      }
+      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      if (!refreshed.ok) throw new Error("database");
+      stateVersion.current = refreshed.headers.get("etag");
+      setData({ ...initial, ...(await refreshed.json()) });
+      setToast("تم حذف المصروف");
+    } catch (error) {
+      setData(previous);
+      setToast(
+        error instanceof Error && error.message !== "database"
+          ? error.message
+          : "تعذر حذف المصروف",
+      );
+    }
+    window.setTimeout(() => setToast(""), 2200);
+  };
+
+  return {
+    data,
+    update,
+    deleteStudent,
+    createExpense,
+    deleteExpense,
+    toast,
+  };
 }

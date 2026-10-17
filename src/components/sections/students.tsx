@@ -15,7 +15,7 @@ import { StudentHistory } from "@/components/sections/student-history";
 import { StudentEnrollmentForm } from "@/components/sections/student-enrollment-form";
 
 
-export function Students({ data, update }: Props) {
+export function Students({ data, update, deleteStudent }: Props) {
   const [query, setQuery] = useState("");
   const [enrollmentFilter, setEnrollmentFilter] = useState("all");
   const [editing, setEditing] = useState<Student | null>(null);
@@ -314,17 +314,7 @@ export function Students({ data, update }: Props) {
                       setEditing(student);
                       setOpen(true);
                     }}
-                    onDelete={() =>
-                      update(
-                        {
-                          ...data,
-                          students: data.students.filter(
-                            (s) => s.id !== student.id,
-                          ),
-                        },
-                        "تم حذف الطالب",
-                      )
-                    }
+                    onDelete={() => deleteStudent?.(student.id)}
                   />
                 </div>
               </Td>
