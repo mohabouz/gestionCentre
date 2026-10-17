@@ -54,6 +54,7 @@ import {
   today,
 } from "@/lib/centman-store";
 import { CourseManagement } from "@/components/course-management";
+import { LevelManagement } from "@/components/level-management";
 import { AppLanguage, useLanguage } from "@/components/language-provider";
 import { useAuth } from "@/components/auth-provider";
 
@@ -183,6 +184,8 @@ export default function SectionPage() {
       }}
       update={(next, message) => update({ ...data, ...next }, message)}
     />
+  ) : section === "levels" ? (
+    <LevelManagement levels={data.levels} />
   ) : section === "expenses" ? (
     <Expenses data={data} update={update} />
   ) : section === "registrations" || section === "payments" ? (
