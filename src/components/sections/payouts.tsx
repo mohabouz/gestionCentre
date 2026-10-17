@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Printer } from "lucide-react";
 import { Button, Card, PageTitle } from "@/components/centman-shell";
 import { Course, Payout, Teacher, currentMonth, formatBillingMonth, money, today } from "@/lib/centman-store";
+import { printTeacherPaymentReport } from "@/lib/payout-report";
 
 
 import { EmptyState, Table, Td, Th } from "@/components/sections/shared-ui";
@@ -185,12 +187,23 @@ export function Payouts({ data, update }: Props) {
                         </>
                       )}
                       {payout.status === "مدفوعة" && (
-                        <Button
-                          variant="outline"
-                          onClick={() => returnPayoutToDraft(payout)}
-                        >
-                          إرجاع لمسودة
-                        </Button>
+                        <>
+                          <button
+                            type="button"
+                            aria-label={`طباعة تقرير أداء ${t.name}`}
+                            title="طباعة تقرير المجموعات والتلاميذ المؤدين"
+                            onClick={() => printTeacherPaymentReport(data, t, payout.month)}
+                            className="rounded-lg border border-[#dbe7df] bg-white p-2.5 text-[#53685d] hover:bg-[#f2f7f4]"
+                          >
+                            <Printer size={15} />
+                          </button>
+                          <Button
+                            variant="outline"
+                            onClick={() => returnPayoutToDraft(payout)}
+                          >
+                            إرجاع لمسودة
+                          </Button>
+                        </>
                       )}
                       {payout.status === "ملغاة" && (
                         <Button
