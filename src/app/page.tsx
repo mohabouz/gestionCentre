@@ -141,8 +141,8 @@ export default function Home() {
             { label: "إجمالي الباقات", value: data.courses.filter((course) => course.type === "باقة").length, unit: "باقة", icon: Package, tone: "bg-[#fff6d8] text-[#a08500]" },
             { label: "إجمالي الدورات", value: data.courses.length, unit: "نشطة", icon: BookOpen, tone: "bg-[#e8efff] text-[#4c73c8]" },
             { label: "إجمالي الأساتذة", value: data.teachers.length, unit: "عضو", icon: GraduationCap, tone: "bg-[#eeeaff] text-[#6658bf]" },
-            { label: "الطلاب النشطون", value: data.students.filter((student) => student.status === "نشط").length, unit: "طالب", icon: Users, tone: "bg-[#e7f7ee] text-[#168653]" },
-            { label: "إجمالي الطلاب", value: data.students.length, unit: "مسجل", icon: UserRound, tone: "bg-[#fff0ed] text-[#d56558]" },
+            { label: "التلاميذ النشطون", value: data.students.filter((student) => student.status === "نشط").length, unit: "تلميذ", icon: Users, tone: "bg-[#e7f7ee] text-[#168653]" },
+            { label: "إجمالي التلاميذ", value: data.students.length, unit: "مسجل", icon: UserRound, tone: "bg-[#fff0ed] text-[#d56558]" },
           ].map(({ label, value, unit, icon: Icon, tone }) => (
             <Card key={label} className="relative overflow-hidden">
               <div className="flex items-start justify-between gap-3">
@@ -187,7 +187,7 @@ export default function Home() {
                   أكثر الدورات تسجيلاً
                 </h3>
                 <p className="mt-1 text-[11px] text-[#838383]">
-                  عدد الطلاب الفعلي
+                  عدد التلاميذ الفعلي
                 </p>
               </div>
               <Link
@@ -202,7 +202,7 @@ export default function Home() {
                 <div key={course.id}>
                   <div className="mb-1 flex justify-between text-xs">
                     <span>{course.name}</span>
-                    <b>{course.actual} طالب</b>
+                    <b>{course.actual} تلميذ</b>
                   </div>
                   <div className="h-2 rounded-full bg-[#f1f1f1]">
                     <div
@@ -228,7 +228,7 @@ export default function Home() {
             <h3 className="mb-5 text-lg font-black">إجراءات سريعة</h3>
             <div className="grid grid-cols-2 gap-3">
               {[
-                ["إضافة طالب جديد", "/students", Users],
+                ["إضافة تلميذ جديد", "/students", Users],
                 ["إضافة أستاذ", "/teachers", GraduationCap],
                 ["إنشاء دورة", "/courses", BookOpen],
                 ["حجز حصة", "/schedule", CalendarDays],
@@ -252,7 +252,7 @@ export default function Home() {
               <Bell className="text-[#a08500]" />
               <div>
                 <b className="block text-xs">
-                  لديك {lateStudents.length} طلاب متأخرين عن الدفع
+                  لديك {lateStudents.length} تلاميذ متأخرين عن الدفع
                 </b>
                 <span className="text-[10px] text-[#838383]">
                   إجمالي المستحقات:{" "}

@@ -2,6 +2,14 @@ import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "@/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
-const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL || "file:./prisma/dev.db" });
-export const prisma = globalForPrisma.prisma || new PrismaClient({ adapter });
+// Keep the fallback aligned with `.env` and Prisma CLI resolution. Using a
+// second fallback path can make a restart appear to have lost all data.
+const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL || "file:./dev.db" });
+const cachedPrisma = globalForPrisma.prisma;
+export const prisma = cachedPrisma?.paymentCollection?.findMany
+	? cachedPrisma
+	: new PrismaClient({ adapter });
+if (cachedPrisma && cachedPrisma !== prisma) {
+	void cachedPrisma.$disconnect().catch(() => undefined);
+}
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

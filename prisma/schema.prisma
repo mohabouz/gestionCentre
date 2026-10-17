@@ -73,15 +73,49 @@ model Course {
   name        String
   type        String
   teacherId   Int?
+  levelId     Int?
   price       Int          @default(0)
   teacher     Teacher?     @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  level       Level?       @relation(fields: [levelId], references: [id], onDelete: SetNull)
+  levelAssignments CourseLevel[]
   enrollments Enrollment[]
   packSubjects PackSubject[] @relation("PackSubjects")
   includedInPacks PackSubject[] @relation("IncludedSubjects")
   sessions    Session[]
+  payments    Payment[]
   createdAt   DateTime     @default(now())
   @@index([type])
   @@index([teacherId])
+  @@index([levelId])
+}
+
+model Level {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  nameAr    String
+  nameFr    String
+  abbreviation String @default("")
+  curriculum String  @default("MOROCCAN")
+  cycle     String   @default("تأهيلي")
+  sortOrder Int      @default(0)
+  courses   Course[]
+  courseAssignments CourseLevel[]
+  createdAt DateTime @default(now())
+  @@index([sortOrder])
+}
+
+model CourseLevel {
+  courseId Int
+  levelId  Int
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  level    Level  @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  @@id([courseId, levelId])
+  @@index([levelId])
+}
+
+model LevelCatalogState {
+  id          Int     @id @default(1)
+  initialized Boolean @default(false)
 }
 
 model PackSubject {
@@ -101,8 +135,10 @@ model Enrollment {
   removedAt  String?
   status     String   @default("نشط")
   source     String?
+  discount   Int      @default(0)
   student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  payments   Payment[]
   @@index([studentId, status])
   @@index([courseId, status])
 }
@@ -110,15 +146,35 @@ model Enrollment {
 model Payment {
   id            Int      @id @default(autoincrement())
   studentId     Int
+  courseId      Int?
+  enrollmentId  Int?
   student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course        Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  enrollment    Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  collections   PaymentCollection[]
   amount        Int
   totalAmount   Int?
   month         String
+  billingMonth  String?
   status        String
   date          String
   method        String?
   receiptNumber String?  @unique
   @@index([studentId, status])
+  @@index([date])
+  @@index([courseId])
+  @@unique([enrollmentId, billingMonth])
+}
+
+model PaymentCollection {
+  id            Int      @id @default(autoincrement())
+  paymentId     Int
+  payment       Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  amount        Int
+  date          String
+  method        String?
+  receiptNumber String?  @unique
+  @@index([paymentId, date])
   @@index([date])
 }
 
@@ -189,5 +245,6 @@ model AppSettings {
   phone         String  @default("")
   language      String  @default("العربية")
   notifications Boolean @default(true)
+  subscriptionFee Int   @default(200)
   logo          String?
 }

@@ -1456,7 +1456,7 @@ function Payments({ data, update, monthly }: Props & { monthly: boolean }) {
   const [query, setQuery] = useState("");
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
   const record = (payment: Payment) => {
-    const receiptNumber = `REC-${today.replaceAll("-", "")}-${String(Date.now()).slice(-4)}`;
+    const receiptNumber = `REC-${today.replaceAll("-", "")}-${String(payment.id).padStart(4, "0")}`;
     const updatedPayments = data.payments.map((p) =>
       p.id === payment.id
         ? {
@@ -2014,7 +2014,7 @@ function Payouts({ data, update }: Props) {
         payouts: [
           ...data.payouts,
           {
-            id: Date.now(),
+            id: Math.max(0, ...data.payouts.map((payout) => payout.id)) + 1,
             teacherId: teacher.id,
             teacher: teacher.name,
             month,
@@ -2682,9 +2682,6 @@ function SpreadsheetTimetable({ data, update }: Props) {
   );
   const [open, setOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | null>(null);
-  const [selectedSessionIds, setSelectedSessionIds] = useState<Set<number>>(new Set());
-  const [confirmDeleteSessions, setConfirmDeleteSessions] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [resizePreview, setResizePreview] = useState<{
     sessionId: number;
     startIndex: number;
@@ -2756,54 +2753,6 @@ function SpreadsheetTimetable({ data, update }: Props) {
       date: session.date,
     });
     setOpen(true);
-  };
-  const selectSession = (sessionId: number, additive: boolean) => {
-    setSelectedSessionIds((current) => {
-      if (!additive) {
-        if (current.size === 1 && current.has(sessionId)) return new Set();
-        return new Set([sessionId]);
-      }
-      const next = new Set(current);
-      if (next.has(sessionId)) next.delete(sessionId);
-      else next.add(sessionId);
-      return next;
-    });
-  };
-  const sessionColor = (session: Session) => {
-    const value = `${session.course || session.title}:${session.teacher}`;
-    let hash = 0;
-    for (let index = 0; index < value.length; index += 1) {
-      hash = (hash * 31 + value.charCodeAt(index)) | 0;
-    }
-    const colors = ["#5054c0", "#168653", "#c26a22", "#b5486b", "#287b9b", "#7556a8"];
-    return colors[Math.abs(hash) % colors.length];
-  };
-  useEffect(() => {
-    if (!selectedSessionIds.size) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setSelectedSessionIds(new Set());
-        setContextMenu(null);
-        return;
-      }
-      if (event.key === "Delete") {
-        event.preventDefault();
-        setConfirmDeleteSessions(true);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedSessionIds.size]);
-  const deleteSelectedSessions = () => {
-    update(
-      {
-        ...data,
-        sessions: data.sessions.filter((session) => !selectedSessionIds.has(session.id)),
-      },
-      "تم حذف الحصص المحددة",
-    );
-    setSelectedSessionIds(new Set());
-    setConfirmDeleteSessions(false);
   };
   const beginResize = (
     event: React.PointerEvent<HTMLButtonElement>,
@@ -2904,28 +2853,27 @@ function SpreadsheetTimetable({ data, update }: Props) {
     weekday: string,
     room: string,
     index: number,
-    copy = false,
   ) => {
     const duration = Math.max(
       1,
       indexOf(session.endTime || "17:00") - indexOf(session.time),
     );
-    const placement = {
-      weekday,
-      room,
-      time: timeAt(index),
-      endTime: timeAt(index + duration),
-    };
     update(
       {
         ...data,
-        sessions: copy
-          ? [...data.sessions, { ...session, ...placement, id: Date.now() }]
-          : data.sessions.map((item) =>
-            item.id === session.id ? { ...item, ...placement } : item,
-          ),
+        sessions: data.sessions.map((item) =>
+          item.id === session.id
+            ? {
+              ...item,
+              weekday,
+              room,
+              time: timeAt(index),
+              endTime: timeAt(index + duration),
+            }
+            : item,
+        ),
       },
-      copy ? "تم نسخ الحصة" : "تم تحريك الحصة",
+      "تم تحريك الحصة",
     );
   };
   const addRoom = (event: FormEvent) => {
@@ -2997,25 +2945,9 @@ function SpreadsheetTimetable({ data, update }: Props) {
         </form>
       </Card>
       <Card>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-[#84938b]">
-            هذا الجدول أسبوعي متكرر؛ يتم تحديد التاريخ فقط عند تسجيل الحضور.
-          </p>
-          {selectedSessionIds.size > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#53685d]">
-                {selectedSessionIds.size} حصة محددة
-              </span>
-              <Button
-                variant="danger"
-                onClick={() => setConfirmDeleteSessions(true)}
-              >
-                <Trash2 size={14} className="ml-1 inline" />
-                حذف المحدد
-              </Button>
-            </div>
-          )}
-        </div>
+        <p className="mb-4 text-xs text-[#84938b]">
+          هذا الجدول أسبوعي متكرر؛ يتم تحديد التاريخ فقط عند تسجيل الحضور.
+        </p>
         <div className="overflow-x-auto">
           <table className="w-max min-w-[1500px] table-fixed border-collapse text-right text-[10px]">
             <thead>
@@ -3108,41 +3040,25 @@ function SpreadsheetTimetable({ data, update }: Props) {
                                   sessionStartIndex,
                                   span,
                                 ),
-                                event.ctrlKey ||
-                                event.dataTransfer.getData("copy") === "true",
                               );
                             }
                             setDragPreview(null);
                           }}
-                          className={`relative h-12 border border-[#e5e5e5] p-1 text-white ${dragPreview &&
+                          className={`relative h-12 border border-[#e5e5e5] bg-[#5054c0] p-1 text-white ${dragPreview &&
                             dragPreview.weekday === weekday &&
                             dragPreview.room === room.name &&
                             dragPreview.index < sessionStartIndex + span &&
                             dragPreview.index + dragPreview.duration > sessionStartIndex
                             ? "bg-[#f59e0b]/20 outline outline-2 outline-dashed outline-[#f59e0b] outline-offset-[-2px]"
                             : ""
-                            } ${selectedSessionIds.has(session.id) ? "outline outline-2 outline-dashed outline-[#f59e0b] outline-offset-[-2px]" : ""}`}
-                          style={{ backgroundColor: sessionColor(session) }}
+                            }`}
                         >
                           <div
                             draggable
-                            onClick={(event) => {
-                              if (event.detail > 1) return;
-                              selectSession(session.id, event.ctrlKey || event.metaKey);
-                            }}
-                            onContextMenu={(event) => {
-                              event.preventDefault();
-                              selectSession(session.id, event.ctrlKey || event.metaKey);
-                              setContextMenu({ x: event.clientX, y: event.clientY });
-                            }}
                             onDragStart={(event) => {
                               event.dataTransfer.setData(
                                 "session",
                                 String(session.id),
-                              );
-                              event.dataTransfer.setData(
-                                "copy",
-                                String(event.ctrlKey),
                               );
                               setDragPreview(null);
                             }}
@@ -3239,14 +3155,7 @@ function SpreadsheetTimetable({ data, update }: Props) {
                                 Number(event.dataTransfer.getData("session")),
                             );
                             if (session)
-                              move(
-                                session,
-                                weekday,
-                                room.name,
-                                slotIndex,
-                                event.ctrlKey ||
-                                event.dataTransfer.getData("copy") === "true",
-                              );
+                              move(session, weekday, room.name, slotIndex);
                             setDragPreview(null);
                           }}
                           onClick={() => {
@@ -3289,19 +3198,6 @@ function SpreadsheetTimetable({ data, update }: Props) {
           </table>
         </div>
       </Card>
-      {contextMenu && (
-        <>
-          <button type="button" aria-label="إغلاق القائمة" className="fixed inset-0 z-40 cursor-default" onClick={() => setContextMenu(null)} />
-          <div className="fixed z-50 rounded-lg border border-[#e5e5e5] bg-white p-1 shadow-xl" style={{ left: contextMenu.x, top: contextMenu.y }}>
-            <button type="button" className="rounded-md px-3 py-2 text-xs font-bold text-[#c4584e] hover:bg-[#fff0ee]" onClick={() => { setContextMenu(null); setConfirmDeleteSessions(true); }}>
-              حذف الحصة المحددة
-            </button>
-          </div>
-        </>
-      )}
-      {confirmDeleteSessions && (
-        <ConfirmDialog title="تأكيد حذف الحصص" message={`هل أنت متأكد من حذف ${selectedSessionIds.size} حصة محددة؟ لا يمكن التراجع عن هذا الإجراء.`} confirmLabel="حذف الحصص" onCancel={() => setConfirmDeleteSessions(false)} onConfirm={deleteSelectedSessions} />
-      )}
       {open && (
         <Modal
           title={editingSession ? "تعديل الحصة" : "حجز حصة جديدة"}
@@ -3408,15 +3304,6 @@ function SpreadsheetTimetable({ data, update }: Props) {
             </div>
           </form>
         </Modal>
-      )}
-      {confirmDeleteSessions && (
-        <ConfirmDialog
-          title="تأكيد حذف الحصص"
-          message={`هل أنت متأكد من حذف ${selectedSessionIds.size} حصة محددة؟ لا يمكن التراجع عن هذا الإجراء.`}
-          confirmLabel="حذف الحصص"
-          onCancel={() => setConfirmDeleteSessions(false)}
-          onConfirm={deleteSelectedSessions}
-        />
       )}
     </>
   );
@@ -3792,82 +3679,107 @@ function WeeklyTimetable({ data, update }: Props) {
 }
 
 function Attendance({ data, update }: Props) {
-  const weekdayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
-  const parseDate = (value: string) => {
-    const [year, month, day] = value.split("-").map(Number);
-    return new Date(year, month - 1, day);
-  };
-  const formatDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-  const displayDate = (value: string) => parseDate(value).toLocaleDateString("ar-MA", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const [session, setSession] = useState(data.sessions[0]?.id || 0);
   const [occurrenceDate, setOccurrenceDate] = useState(today);
-  const [session, setSession] = useState(0);
   const [statuses, setStatuses] = useState<Record<number, AttendanceRecord["status"]>>({});
-  const selectedWeekday = weekdayNames[parseDate(occurrenceDate).getDay()];
-  const dailySessions = data.sessions.filter((item) => (item.weekday || "الاثنين") === selectedWeekday).sort((a, b) => a.time.localeCompare(b.time));
+  useEffect(() => {
+    if (data.sessions.length && !data.sessions.some((item) => item.id === session)) {
+      setSession(data.sessions[0].id);
+    }
+  }, [data.sessions, session]);
   const selectedSession = data.sessions.find((item) => item.id === session);
-  const selectedCourse = data.courses.find((course) => course.name === selectedSession?.course);
-  const students = data.students.filter((student) => data.enrollments.some((enrollment) => enrollment.studentId === student.id && enrollment.status === "نشط" && enrollment.courseId === selectedCourse?.id));
-  const selectedRecords = data.attendances.filter((item) => item.sessionId === session && item.occurrenceDate === occurrenceDate);
-  const historyDates = Array.from(new Set(data.attendances.filter((item) => item.sessionId === session).map((item) => item.occurrenceDate))).sort().reverse();
+  const selectedCourse = data.courses.find(
+    (course) => course.name === selectedSession?.course,
+  );
+  const students = data.students.filter((student) =>
+    data.enrollments.some(
+      (enrollment) =>
+        enrollment.studentId === student.id &&
+        enrollment.status === "نشط" &&
+        enrollment.courseId === selectedCourse?.id,
+    ),
+  );
   useEffect(() => {
-    if (!dailySessions.some((item) => item.id === session)) setSession(dailySessions[0]?.id || 0);
-  }, [dailySessions, session]);
-  useEffect(() => {
-    setStatuses(selectedRecords.reduce<Record<number, AttendanceRecord["status"]>>((result, item) => {
-      result[item.studentId] = item.status;
-      return result;
-    }, {}));
+    const saved = data.attendances
+      .filter(
+        (item) =>
+          item.sessionId === session && item.occurrenceDate === occurrenceDate,
+      )
+      .reduce<Record<number, AttendanceRecord["status"]>>((result, item) => {
+        result[item.studentId] = item.status;
+        return result;
+      }, {});
+    setStatuses(saved);
   }, [data.attendances, occurrenceDate, session]);
-  const changeDate = (offset: number) => {
-    const next = parseDate(occurrenceDate);
-    next.setDate(next.getDate() + offset);
-    setOccurrenceDate(formatDate(next));
-  };
   const saveAttendance = () => {
-    const current = data.attendances.filter((item) => item.sessionId !== session || item.occurrenceDate !== occurrenceDate);
-    const records = Object.entries(statuses).map(([studentId, status], index) => ({ id: Date.now() + index, sessionId: session, studentId: Number(studentId), occurrenceDate, status }));
+    const current = data.attendances.filter(
+      (item) =>
+        item.sessionId !== session || item.occurrenceDate !== occurrenceDate,
+    );
+    const records = Object.entries(statuses).map(([studentId, status], index) => ({
+      id: Date.now() + index,
+      sessionId: session,
+      studentId: Number(studentId),
+      occurrenceDate,
+      status,
+    }));
     update({ ...data, attendances: [...current, ...records] }, "تم حفظ الحضور");
   };
-  const markAllPresent = () => setStatuses(Object.fromEntries(students.map((student) => [student.id, "حاضر" as const])));
-  const statusCount = (status: AttendanceRecord["status"]) => Object.values(statuses).filter((value) => value === status).length;
   return (
     <>
       <PageTitle eyebrow="التنظيم" title="تسجيل الحضور" />
-      <div className="mb-5 flex w-full flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => changeDate(-1)}>اليوم السابق</Button>
-          <Button onClick={() => setOccurrenceDate(today)}>اليوم</Button>
-          <Button variant="outline" onClick={() => changeDate(1)}>اليوم التالي</Button>
+      <Card>
+        <div className="mb-5">
+          <label className="text-xs font-bold text-[#64786c]">اختر الحصة</label>
+          <select
+            value={session}
+            onChange={(event) => setSession(Number(event.target.value))}
+            className="mt-2 w-full rounded-xl border border-[#dce7df] bg-white p-3 text-sm"
+          >
+            {data.sessions.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.title} - كل {item.weekday || "أسبوع"} {item.time}
+              </option>
+            ))}
+          </select>
+          <label className="mt-3 block text-xs font-bold text-[#64786c]">
+            تاريخ الحصة
+            <input
+              type="date"
+              value={occurrenceDate}
+              onChange={(event) => setOccurrenceDate(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-[#dce7df] bg-white p-3 text-sm"
+            />
+          </label>
         </div>
-        <label className="flex items-center gap-2 text-xs font-bold text-[#64786c]">
-          <span>{displayDate(occurrenceDate)}</span>
-          <input type="date" value={occurrenceDate} onChange={(event) => setOccurrenceDate(event.target.value)} className="rounded-xl border border-[#dce7df] bg-white p-2 text-xs" />
-        </label>
-      </div>
-      <div className="grid w-full min-w-0 gap-5 xl:grid-cols-[0.85fr_1.5fr]">
-        <Card className="min-w-0">
-          <div className="mb-4 flex items-center justify-between">
-            <div><h3 className="font-black">حصص اليوم</h3><p className="mt-1 text-xs text-[#84938b]">{dailySessions.length} حصة مجدولة</p></div>
-          </div>
-          <div className="space-y-2">
-            {dailySessions.map((item) => {
-              const count = data.attendances.filter((record) => record.sessionId === item.id && record.occurrenceDate === occurrenceDate).length;
-              const active = item.id === session;
-              return <button key={item.id} type="button" onClick={() => setSession(item.id)} className={`w-full rounded-xl border p-3 text-right transition-colors ${active ? "border-[#5054c0] bg-[#f5f7ff]" : "border-[#e5e5e5] bg-white hover:bg-[#f7f9f8]"}`}><div className="flex items-start justify-between gap-3"><div><b className="block text-xs">{item.title}</b><span className="mt-1 block text-[10px] text-[#84938b]">{item.time} - {item.endTime || "17:00"} • {item.room}</span></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${count ? "bg-[#e4f5eb] text-[#218653]" : "bg-[#faf4de] text-[#a08500]"}`}>{count ? `${count} مسجل` : "غير مسجل"}</span></div></button>;
-            })}
-            {!dailySessions.length && <p className="rounded-xl bg-[#fafafa] p-6 text-center text-xs text-[#84938b]">لا توجد حصص في هذا اليوم</p>}
-          </div>
-        </Card>
-        <Card className="min-w-0">
-          {selectedSession ? <>
-            <div className="mb-5 flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-black">{selectedSession.title}</h3><p className="mt-1 text-xs text-[#84938b]">{selectedSession.teacher} • {selectedSession.room} • {displayDate(occurrenceDate)}</p></div><div className="flex gap-2 text-[10px] font-bold"><span className="rounded-full bg-[#e4f5eb] px-2 py-1 text-[#218653]">حاضر {statusCount("حاضر")}</span><span className="rounded-full bg-[#fff0ed] px-2 py-1 text-[#c4584e]">غائب {statusCount("غائب")}</span><span className="rounded-full bg-[#faf4de] px-2 py-1 text-[#a08500]">متأخر {statusCount("متأخر")}</span></div></div>
-            <div className="mb-4 flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={markAllPresent}>تسجيل الكل حاضر</Button><Button onClick={saveAttendance} disabled={!students.length}>حفظ الحضور</Button></div>
-            <Table><Th>الطالب</Th><Th>الدورة</Th><Th>الحالة</Th>{students.map((student) => <tr key={student.id}><Td><b>{student.name}</b></Td><Td>{student.course}</Td><Td><div className="flex gap-2">{["حاضر", "غائب", "متأخر"].map((status) => <button key={status} onClick={() => setStatuses({ ...statuses, [student.id]: status as AttendanceRecord["status"] })} className={`rounded-lg px-3 py-2 text-[10px] font-bold ${statuses[student.id] === status ? "bg-[#00a060] text-white" : "bg-[#f1f5f2] text-[#718278]"}`}>{status}</button>)}</div></Td></tr>)}</Table>
-            {!students.length && <p className="rounded-xl bg-[#fafafa] p-6 text-center text-xs text-[#84938b]">لا يوجد طلاب نشطون في هذه المادة</p>}
-            <div className="mt-6 border-t border-[#eef3ef] pt-4"><h4 className="mb-3 text-sm font-black">سجل الحضور</h4>{historyDates.length ? <div className="space-y-2">{historyDates.map((date) => { const records = data.attendances.filter((item) => item.sessionId === session && item.occurrenceDate === date); return <button key={date} type="button" onClick={() => setOccurrenceDate(date)} className="flex w-full items-center justify-between rounded-lg bg-[#f7f9f8] px-3 py-2 text-xs hover:bg-[#eef5f0]"><span>{displayDate(date)}</span><span className="text-[#84938b]">{records.filter((item) => item.status === "حاضر").length} حاضر • {records.filter((item) => item.status === "غائب").length} غائب • {records.filter((item) => item.status === "متأخر").length} متأخر</span></button>; })}</div> : <p className="text-xs text-[#84938b]">لا يوجد سجل سابق لهذه الحصة</p>}</div>
-          </> : <p className="py-16 text-center text-sm text-[#84938b]">اختر حصة من قائمة اليوم</p>}
-        </Card>
-      </div>
+        <Table>
+          <Th>الطالب</Th>
+          <Th>الدورة</Th>
+          <Th>الحالة</Th>
+          {students.map((student) => (
+            <tr key={student.id}>
+              <Td><b>{student.name}</b></Td>
+              <Td>{student.course}</Td>
+              <Td>
+                <div className="flex gap-2">
+                  {["حاضر", "غائب", "متأخر"].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => setStatuses({ ...statuses, [student.id]: status as AttendanceRecord["status"] })}
+                      className={`rounded-lg px-3 py-2 text-[10px] font-bold ${statuses[student.id] === status ? "bg-[#00a060] text-white" : "bg-[#f1f5f2] text-[#718278]"}`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </Td>
+            </tr>
+          ))}
+        </Table>
+        <div className="mt-4 flex justify-end">
+          <Button onClick={saveAttendance} disabled={!session || !students.length}>حفظ الحضور</Button>
+        </div>
+      </Card>
     </>
   );
 }
@@ -3890,6 +3802,11 @@ function SettingsPage() {
     role: "ADMIN" as "ADMIN" | "SUPER_ADMIN",
   });
   const [adminMessage, setAdminMessage] = useState("");
+  const [cleanupOptions, setCleanupOptions] = useState({ students: true, teachers: false, courses: false, enrollments: true, payments: true, attendance: true, expenses: true, payouts: true, schedule: false, rooms: false, accounts: false, settings: false });
+  const [cleanupSelectionOpen, setCleanupSelectionOpen] = useState(false);
+  const [cleanupConfirmOpen, setCleanupConfirmOpen] = useState(false);
+  const [cleanupMessage, setCleanupMessage] = useState("");
+  const [cleaning, setCleaning] = useState(false);
   const [form, setForm] = useState({
     name: "CentMan",
     address: "الجزائر العاصمة",
@@ -3952,6 +3869,31 @@ function SettingsPage() {
         if (usersResponse.ok) setManagedUsers(await usersResponse.json());
       }
       setAdminMessage("تم إنشاء الحساب بنجاح");
+    }
+  };
+  const cleanCenterData = async () => {
+    setCleaning(true);
+    setCleanupMessage("");
+    try {
+      const response = await fetch("/api/admin/cleanup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cleanupOptions),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "تعذر تنظيف البيانات");
+      setCleanupMessage("اكتمل تنظيف الفئات المحددة.");
+      if (cleanupOptions.accounts) {
+        window.location.href = "/setup";
+        return;
+      }
+      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      if (refreshed.ok) window.location.reload();
+      setCleanupConfirmOpen(false);
+    } catch (error) {
+      setCleanupMessage(error instanceof Error ? error.message : "تعذر تنظيف البيانات");
+    } finally {
+      setCleaning(false);
     }
   };
   const updateUser = async (payload: Record<string, unknown>, target?: AdminUser) => {
@@ -4030,6 +3972,12 @@ function SettingsPage() {
             )}
           </div>
         </Card>
+        {user?.role === "SUPER_ADMIN" && <Card className="border-[#f0d2cc] lg:col-span-2">
+          <h3 className="mb-2 font-black text-[#a33f35]">تنظيف بيانات المركز</h3>
+          <p className="mb-4 text-xs leading-6 text-[#6c6c6c]">اختر الفئات التي تريد حذفها. حذف التلاميذ أو المواد يحذف تلقائياً التسجيلات والحضور والمدفوعات المرتبطة بها عند الحاجة.</p>
+          {cleanupMessage && <p className="mb-3 text-xs font-bold text-[#a33f35]">{cleanupMessage}</p>}
+          <Button variant="danger" disabled={cleaning} onClick={() => setCleanupSelectionOpen(true)}>{cleaning ? "جارٍ التنظيف..." : "تنظيف البيانات"}</Button>
+        </Card>}
         <Card>
           <h3 className="mb-5 font-black text-[#17251f]">حسابات الإدارة</h3>
           <p className="mb-4 text-xs text-[#84938b]">
@@ -4104,6 +4052,10 @@ function SettingsPage() {
       </div>
       {editingUser && <Modal title="تعديل حساب الإدارة" onClose={() => setEditingUser(null)}><form onSubmit={async (event) => { event.preventDefault(); if (await updateUser({ name: editingUser.name, role: editingUser.role })) setEditingUser(null); }} className="space-y-4"><Input label="الاسم" value={editingUser.name} onChange={(name) => setEditingUser({ ...editingUser, name })} /><label className="block text-right"><span className="mb-2 block text-xs font-bold text-[#64786c]">الصلاحية</span><select value={editingUser.role} onChange={(event) => setEditingUser({ ...editingUser, role: event.target.value as AdminUser["role"] })} className="w-full rounded-xl border border-[#dce7df] bg-white p-3 text-sm"><option value="ADMIN">Admin</option><option value="SUPER_ADMIN">Super-admin</option></select></label><div className="flex justify-end"><Button type="submit">حفظ التعديل</Button></div></form></Modal>}
       {resetUser && <Modal title={`تغيير كلمة مرور ${resetUser.name}`} onClose={() => setResetUser(null)}><form onSubmit={async (event) => { event.preventDefault(); if (resetPassword.length < 8 || resetPassword !== resetConfirmation) { setUserMessage(resetPassword.length < 8 ? "كلمة المرور يجب أن تحتوي على 8 أحرف على الأقل" : "كلمتا المرور غير متطابقتين"); return; } if (await updateUser({ password: resetPassword })) { setResetUser(null); setResetPassword(""); setResetConfirmation(""); } }} className="space-y-4"><Input label="كلمة المرور الجديدة" type="password" value={resetPassword} onChange={setResetPassword} /><Input label="تأكيد كلمة المرور" type="password" value={resetConfirmation} onChange={setResetConfirmation} /><div className="flex justify-end"><Button type="submit">حفظ كلمة المرور</Button></div></form></Modal>}
+      {cleanupSelectionOpen && <Modal title="اختيار البيانات المراد حذفها" onClose={() => setCleanupSelectionOpen(false)}><div className="max-h-[55vh] space-y-2 overflow-y-auto">{([
+        ["students", "التلاميذ"], ["teachers", "الأساتذة"], ["courses", "المواد والباقات"], ["enrollments", "التسجيلات"], ["payments", "المدفوعات"], ["attendance", "الحضور"], ["expenses", "المصاريف"], ["payouts", "رواتب الأساتذة"], ["schedule", "الجدول والحصص"], ["rooms", "القاعات"], ["accounts", "حسابات الإدارة"], ["settings", "إعدادات المؤسسة"],
+      ] as const).map(([key, label]) => <label key={key} className="flex items-center justify-between rounded-xl border border-[#e5e5e5] p-3 text-xs font-bold"><span>حذف {label}</span><input type="checkbox" checked={cleanupOptions[key]} onChange={event => setCleanupOptions(current => ({ ...current, [key]: event.target.checked }))} className="h-4 w-4 accent-[#5054c0]" /></label>)}</div><p className="mt-3 text-[11px] leading-5 text-[#a33f35]">الاختيار النهائي سيحذف هذه البيانات نهائياً. حذف الحسابات سيخرجك من النظام ويتطلب إنشاء super-admin من جديد.</p><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setCleanupSelectionOpen(false)}>إلغاء</Button><Button variant="danger" disabled={cleaning || !Object.values(cleanupOptions).some(Boolean)} onClick={() => { setCleanupSelectionOpen(false); setCleanupConfirmOpen(true); }}>متابعة للتأكيد</Button></div></Modal>}
+      {cleanupConfirmOpen && <ConfirmDialog title="التأكيد النهائي للتنظيف" message={`ستُحذف الفئات المحددة نهائياً: ${Object.entries(cleanupOptions).filter(([, selected]) => selected).map(([key]) => key).join("، ")}. لا يمكن التراجع عن هذا الإجراء.`} confirmLabel="تأكيد وحذف المحدد" onCancel={() => setCleanupConfirmOpen(false)} onConfirm={cleanCenterData} />}
     </>
   );
 }

@@ -19,6 +19,9 @@
 
 # production
 /build
+/desktop-build/
+/dist-desktop/
+/.next-desktop/
 
 # misc
 .DS_Store
@@ -32,6 +35,11 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+
+# local SQLite data and backups
+*.db
+*.db-*
+*.db.bak*
 
 # vercel
 .vercel
