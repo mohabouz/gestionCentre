@@ -3193,7 +3193,7 @@ function SpreadsheetTimetable({ data, update }: Props) {
                             />
                             {resizePreview?.sessionId === session.id && (
                               <div
-                                className={`pointer-events-none absolute bottom-0 top-0 z-20 rounded-xl border-2 border-dashed ${conflicts(session.id, session.weekday || "الاثنين", session.room, resizePreview.startIndex, resizePreview.endIndex) ? "border-[#dc2626]" : "border-white"}`}
+                                className={`pointer-events-none absolute bottom-0 top-0 z-20 rounded-xl border-2 border-dashed ${conflicts(session.id, session.weekday || "الاثنين", session.room, resizePreview.startIndex, resizePreview.endIndex) ? "border-[#dc2626] bg-[#dc2626]/10" : "border-[#f59e0b] bg-[#f59e0b]/15"}`}
                                 style={{
                                   left: `${((resizePreview.direction === "rtl" ? span - (resizePreview.endIndex - index) : resizePreview.startIndex - index) / span) * 100}%`,
                                   width: `${((resizePreview.endIndex - resizePreview.startIndex) / span) * 100}%`,
