@@ -102,7 +102,7 @@ export default function Home() {
     { label: "إجمالي الدخل", value: money(income), icon: TrendingUp, tone: "bg-[#eeeaff] text-[#6658bf]" },
   ];
   return (
-    <CentmanShell>
+    <CentmanShell notificationStudents={data.students}>
       <div className="mx-auto max-w-[1450px]">
         <PageTitle eyebrow="نظرة عامة" title="لوحة التحكم" />
         {canViewFinance && <div className="mb-4 flex items-center gap-3">

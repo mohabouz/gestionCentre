@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/centman-shell";
-import { Payment, Student, money } from "@/lib/centman-store";
+import { Course, Enrollment, Level, Payment, Student, money } from "@/lib/centman-store";
+import { courseLevelLabel } from "@/lib/course-level";
 import { remainingPaymentAmount } from "@/lib/monthly-billing";
+import { paymentMonthLabel, resolvePaymentCourse } from "@/lib/payment-display";
 
 
 import { Input, Modal } from "@/components/sections/shared-ui";
@@ -11,11 +13,17 @@ import { Input, Modal } from "@/components/sections/shared-ui";
 export function LatePaymentModal({
   student,
   payments,
+  courses,
+  enrollments,
+  levels,
   onClose,
   onSave,
 }: {
   student: Student;
   payments: Payment[];
+  courses: Course[];
+  enrollments: Enrollment[];
+  levels: Level[];
   onClose: () => void;
   onSave: (amount: number, method: NonNullable<Payment["method"]>) => void;
 }) {
@@ -43,12 +51,32 @@ export function LatePaymentModal({
         </div>
         <div className="max-h-36 space-y-2 overflow-y-auto rounded-xl border border-[#e5e5e5] bg-[#f8faf9] p-3">
           <p className="text-[10px] font-black text-[#60766b]">تفاصيل المستحقات ({payments.length})</p>
-          {payments.map((payment) => (
-            <div key={payment.id} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs">
-              <span className="min-w-0 truncate">{payment.month}</span>
-              <b className="shrink-0 text-[#d56558]">{money(remainingPaymentAmount(payment))}</b>
-            </div>
-          ))}
+          {payments.map((payment) => {
+            const course = resolvePaymentCourse(
+              payment,
+              courses,
+              enrollments,
+              student.course,
+            );
+            const level = course
+              ? courseLevelLabel(course, levels) || "بدون مستوى"
+              : "بدون مستوى";
+            return (
+              <div key={payment.id} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs">
+                <span className="min-w-0">
+                  <span className="flex flex-wrap items-center gap-1 font-black text-[#2c4338]">
+                    <span>{course?.name || student.course || "اشتراك غير محدد"}</span>
+                    <span className="text-[#a5b2ab]">-</span>
+                    <span className="text-[#087849]">{level}</span>
+                  </span>
+                  <span className="mt-1 block text-[10px] text-[#87968e]">
+                    {paymentMonthLabel(payment)}
+                  </span>
+                </span>
+                <b className="shrink-0 text-[#d56558]">{money(remainingPaymentAmount(payment))}</b>
+              </div>
+            );
+          })}
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Input label={`المبلغ المدفوع (الحد الأقصى ${money(totalDue)})`} type="number" value={amount} onChange={setAmount} />

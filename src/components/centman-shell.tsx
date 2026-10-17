@@ -7,10 +7,19 @@ import { Bell, BookOpen, CalendarDays, ChevronDown, CircleDollarSign, ClipboardL
 import { getLanguageConfig, getTranslations, useLanguage } from "@/components/language-provider";
 import { useAuth } from "@/components/auth-provider";
 import { useEscapeLayer } from "@/components/escape-layer";
+import { LatePaymentNotifications } from "@/components/late-payment-notifications";
+import type { Student } from "@/lib/centman-store";
 
 const navItems = [["الرئيسية", "/", LayoutDashboard], ["التلاميذ", "/students", Users], ["الأساتذة", "/teachers", GraduationCap], ["الدورات", "/courses", BookOpen], ["المستويات", "/levels", Layers], ["التسجيلات", "/registrations", ClipboardList, [["كل التسجيلات", "/registrations"], ["الدفوعات الشهرية", "/payments"]]], ["الجدول", "/schedule", CalendarDays, [["جدول الحصص", "/schedule"], ["تسجيل الحضور", "/attendance"]]], ["المصاريف", "/expenses", WalletCards], ["التلاميذ المتأخرون", "/late-students", Bell], ["رواتب الأساتذة", "/payouts", CircleDollarSign], ["الإعدادات", "/settings", Settings]] as const;
 
-export function CentmanShell({ children }: { children: React.ReactNode }) {
+function nameInitials(name?: string) {
+  const parts = name?.trim().split(/\s+/).filter(Boolean) || [];
+  if (!parts.length) return "C";
+  if (parts.length === 1) return Array.from(parts[0]).slice(0, 2).join("");
+  return `${Array.from(parts[0])[0]}${Array.from(parts.at(-1)!)[0]}`;
+}
+
+export function CentmanShell({ children, notificationStudents = [] }: { children: React.ReactNode; notificationStudents?: Student[] }) {
   const pathname = usePathname();
   const { language } = useLanguage();
   const t = getTranslations(language);
@@ -19,9 +28,10 @@ export function CentmanShell({ children }: { children: React.ReactNode }) {
   const [expanded, setExpanded] = useState<string | null>("التسجيلات");
   const [logo, setLogo] = useState("");
   const [institutionName, setInstitutionName] = useState("CentMan");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const labels: Record<string, string> = { "الرئيسية": t.home, "التلاميذ": t.students, "الأساتذة": t.teachers, "الدورات": t.courses, "المستويات": t.levels, "التسجيلات": t.registrations, "الجدول": t.schedule, "المصاريف": t.expenses, "التلاميذ المتأخرون": t.lateStudents, "رواتب الأساتذة": t.payouts, "الإعدادات": t.settings };
   const todayLabel = useMemo(() => new Intl.DateTimeFormat(getLanguageConfig(language).locale, { dateStyle: "full" }).format(new Date()), [language]);
-  useEffect(() => { fetch("/api/settings", { cache: "no-store" }).then(response => response.ok ? response.json() : Promise.reject(new Error("settings"))).then(settings => { setLogo(settings.logo || ""); setInstitutionName(settings.name || "CentMan"); }).catch(() => { setLogo(""); setInstitutionName("CentMan"); }); }, []);
+  useEffect(() => { fetch("/api/settings", { cache: "no-store" }).then(response => response.ok ? response.json() : Promise.reject(new Error("settings"))).then(settings => { setLogo(settings.logo || ""); setInstitutionName(settings.name || "CentMan"); setNotificationsEnabled(settings.notifications !== false); }).catch(() => { setLogo(""); setInstitutionName("CentMan"); setNotificationsEnabled(true); }); }, []);
   const visibleNavItems = user?.role === "ADMIN" ? navItems.filter(([label]) => !["المصاريف", "التلاميذ المتأخرون", "رواتب الأساتذة"].includes(label)) : navItems;
   return <main className="min-h-screen bg-[#f5f7f6]">
     {open && <button aria-label="إغلاق القائمة" className="fixed inset-0 z-20 bg-[#15231d]/30 lg:hidden" onClick={() => setOpen(false)} />}
@@ -31,7 +41,7 @@ export function CentmanShell({ children }: { children: React.ReactNode }) {
       <nav className="shrink-0 space-y-1">{visibleNavItems.map(([label, href, Icon, children]) => { const active = href === "/" ? pathname === "/" : pathname.startsWith(href); return <div key={label}><div className={`flex items-center rounded-xl ${active ? "bg-[#e6f5ee] text-[#008a55]" : "text-[#697b70] hover:bg-[#f2f7f4]"}`}><Link href={href} onClick={() => setOpen(false)} className="flex flex-1 items-center gap-3 px-3 py-3 text-right text-[13px] font-bold"><Icon size={18} /><span>{labels[label]}</span></Link>{children && <button aria-label={`فتح ${labels[label]}`} onClick={() => setExpanded(expanded === label ? null : label)} className="px-3"><ChevronDown size={15} className={`transition-transform ${expanded === label ? "rotate-180" : ""}`} /></button>}</div>{children && expanded === label && <div className="mr-10 mt-1 space-y-1 border-r border-[#dcebe3] pr-3">{children.map(([child, childHref]) => <Link key={child} href={childHref} onClick={() => setOpen(false)} className="block py-2 text-right text-xs text-[#84938b] hover:text-[#008a55]">{child}</Link>)}</div>}</div>; })}</nav>
       <div className="mt-auto shrink-0 rounded-2xl bg-[#f2f8f4] p-4"><div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold text-[#365349]">{user?.name || "CentMan"}</span><span className="text-[10px] font-bold text-[#00a060]">{user?.role === "SUPER_ADMIN" ? "Super-admin" : "Admin"}</span></div><button onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; }} className="mt-3 text-[11px] font-bold text-[#c4584e]">تسجيل الخروج</button></div>
     </aside>
-    <section className="min-h-screen ltr:lg:ml-[270px] rtl:lg:mr-[270px]"><header className="sticky top-0 z-10 flex h-[76px] items-center justify-between border-b border-[#e3eae5] bg-[#f5f7f6]/95 px-5 backdrop-blur md:px-9"><div className="flex items-center gap-4"><button aria-label="فتح القائمة" className="text-[#597067] lg:hidden" onClick={() => setOpen(true)}><Menu size={22} /></button><div className="text-xs font-bold text-[#9aa9a1]">{todayLabel}</div></div><div className="flex items-center gap-3"><div className="hidden h-10 w-52 items-center gap-2 rounded-xl border border-[#e1e9e4] bg-white px-3 text-[#a0afa7] md:flex"><Search size={17} /><input aria-label="بحث" className="w-full bg-transparent text-xs outline-none" placeholder={t.search} /></div><button aria-label="الإشعارات" className="relative rounded-xl border border-[#e1e9e4] bg-white p-2.5 text-[#71857a]"><Bell size={18} /></button><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#d8eee3] text-sm font-black text-[#008a55]">أح</div></div></header><div className="grid-paper min-h-[calc(100vh-76px)] px-5 py-7 md:px-9">{children}</div></section>
+    <section className="min-h-screen ltr:lg:ml-[270px] rtl:lg:mr-[270px]"><header className="sticky top-0 z-10 flex h-[76px] items-center justify-between border-b border-[#e3eae5] bg-[#f5f7f6]/95 px-5 backdrop-blur md:px-9"><div className="flex items-center gap-4"><button aria-label="فتح القائمة" className="text-[#597067] lg:hidden" onClick={() => setOpen(true)}><Menu size={22} /></button><div className="text-xs font-bold text-[#9aa9a1]">{todayLabel}</div></div><div className="flex items-center gap-3"><div className="hidden h-10 w-52 items-center gap-2 rounded-xl border border-[#e1e9e4] bg-white px-3 text-[#a0afa7] md:flex"><Search size={17} /><input aria-label="بحث" className="w-full bg-transparent text-xs outline-none" placeholder={t.search} /></div><LatePaymentNotifications students={notificationStudents} enabled={notificationsEnabled && user?.role === "SUPER_ADMIN"} /><div title={user?.name || "CentMan"} aria-label={user?.name || "CentMan"} className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#d8eee3] text-sm font-black uppercase text-[#008a55]">{nameInitials(user?.name)}</div></div></header><div className="grid-paper min-h-[calc(100vh-76px)] px-5 py-7 md:px-9">{children}</div></section>
   </main>;
 }
 

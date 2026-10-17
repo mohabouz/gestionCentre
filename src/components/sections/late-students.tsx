@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageCircle, Phone } from "lucide-react";
+import { Eye, MessageCircle, Phone } from "lucide-react";
 import { Button, Card, PageTitle } from "@/components/centman-shell";
 import { Payment, PaymentCollection, Student, money, today } from "@/lib/centman-store";
 import { paymentBillingMonth, remainingPaymentAmount } from "@/lib/monthly-billing";
@@ -10,11 +10,13 @@ import { paymentBillingMonth, remainingPaymentAmount } from "@/lib/monthly-billi
 import { EmptyState, Table, Td, Th } from "@/components/sections/shared-ui";
 import type { Props } from "@/components/sections/types";
 import { LatePaymentModal } from "@/components/sections/late-payment-modal";
+import { LatePaymentDetails } from "@/components/sections/late-payment-details";
 
 
 export function LateStudents({ data, update }: Props) {
   const late = data.students.filter((s) => s.due > 0);
   const [payingStudent, setPayingStudent] = useState<Student | null>(null);
+  const [detailsStudent, setDetailsStudent] = useState<Student | null>(null);
   const outstandingPayments = (studentId: number) =>
     data.payments
       .filter((payment) => payment.studentId === studentId && payment.status !== "ملغاة" && remainingPaymentAmount(payment) > 0)
@@ -81,7 +83,13 @@ export function LateStudents({ data, update }: Props) {
           {late.map((s) => (
             <tr key={s.id}>
               <Td>
-                <b>{s.name}</b>
+                <button
+                  type="button"
+                  onClick={() => setDetailsStudent(s)}
+                  className="font-black text-[#2c4338] transition hover:text-[#00a060] hover:underline"
+                >
+                  {s.name}
+                </button>
               </Td>
               <Td>{s.phone}</Td>
               <Td>{s.course}</Td>
@@ -106,19 +114,46 @@ export function LateStudents({ data, update }: Props) {
                 </div>
               </Td>
               <Td>
-                <Button onClick={() => setPayingStudent(s)}>
-                  دفع الآن
-                </Button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDetailsStudent(s)}
+                    className="flex items-center gap-1.5 rounded-xl border border-[#dbe7df] bg-white px-3 py-2.5 text-xs font-bold text-[#53685d] transition hover:bg-[#f2f7f4]"
+                  >
+                    <Eye size={14} />
+                    التفاصيل
+                  </button>
+                  <Button onClick={() => setPayingStudent(s)}>
+                    دفع الآن
+                  </Button>
+                </div>
               </Td>
             </tr>
           ))}
         </Table>
         {!late.length && <EmptyState text="لا توجد مستحقات متأخرة" />}
       </Card>
+      {detailsStudent && (
+        <LatePaymentDetails
+          student={detailsStudent}
+          payments={outstandingPayments(detailsStudent.id)}
+          courses={data.courses}
+          enrollments={data.enrollments}
+          levels={data.levels}
+          onClose={() => setDetailsStudent(null)}
+          onPay={() => {
+            setDetailsStudent(null);
+            setPayingStudent(detailsStudent);
+          }}
+        />
+      )}
       {payingStudent && (
         <LatePaymentModal
           student={payingStudent}
           payments={outstandingPayments(payingStudent.id)}
+          courses={data.courses}
+          enrollments={data.enrollments}
+          levels={data.levels}
           onClose={() => setPayingStudent(null)}
           onSave={(amount, method) => registerPartialPayment(payingStudent, amount, method)}
         />

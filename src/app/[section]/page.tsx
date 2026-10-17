@@ -78,7 +78,7 @@ export default function SectionPage() {
     <SettingsPage />
   );
   return (
-    <CentmanShell>
+    <CentmanShell notificationStudents={data.students}>
       <div className="mx-auto max-w-[1450px]">{content}</div>
       <Toast message={toast} />
     </CentmanShell>
