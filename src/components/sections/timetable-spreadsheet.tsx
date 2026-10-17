@@ -13,7 +13,7 @@ import { Input, Modal } from "@/components/sections/shared-ui";
 import type { Props } from "@/components/sections/types";
 import { DailySchedulePoster } from "@/components/sections/daily-schedule-poster";
 
-export function SpreadsheetTimetable({ data, update }: Props) {
+export function SpreadsheetTimetable({ data, saveSession, saveRoom, deleteRoom }: Props) {
   const weekdays = [
     "الاثنين",
     "الثلاثاء",
@@ -110,25 +110,20 @@ export function SpreadsheetTimetable({ data, update }: Props) {
   const previewInvalid = dragPreview
     ? conflicts(dragPreview.sessionId, dragPreview.weekday, dragPreview.room, dragPreview.index, dragPreview.index + dragPreview.duration)
     : false;
-  const save = (event: FormEvent) => {
+  const save = async (event: FormEvent) => {
     event.preventDefault();
     const sessionId = editingSession?.id ?? -1;
     if (conflicts(sessionId, form.weekday, form.room, indexOf(form.time), indexOf(form.endTime), form.teacher)) {
       return;
     }
-    const sessions = editingSession
-      ? data.sessions.map((session) =>
-        session.id === editingSession.id
-          ? { ...session, ...form }
-          : session,
-      )
-      : [...data.sessions, { ...form, id: Date.now() }];
-    update(
-      { ...data, sessions },
-      editingSession ? "تم تعديل الحصة" : "تمت إضافة الحصة",
-    );
-    setOpen(false);
-    setEditingSession(null);
+    const saved = await saveSession?.({
+      ...(editingSession || { id: 0 }),
+      ...form,
+    });
+    if (saved) {
+      setOpen(false);
+      setEditingSession(null);
+    }
   };
   const editSession = (session: Session) => {
     const linkedCourse = resolveSessionCourse(session, data.courses, data.levels);
@@ -219,21 +214,11 @@ export function SpreadsheetTimetable({ data, update }: Props) {
       event.currentTarget.releasePointerCapture(event.pointerId);
       return;
     }
-    update(
-      {
-        ...data,
-        sessions: data.sessions.map((session) =>
-          session.id === resize.sessionId
-            ? {
-              ...session,
-              time: timeAt(nextStartIndex),
-              endTime: timeAt(nextEndIndex),
-            }
-            : session,
-        ),
-      },
-      "تم تعديل مدة الحصة",
-    );
+    void saveSession?.({
+      ...resizedSession,
+      time: timeAt(nextStartIndex),
+      endTime: timeAt(nextEndIndex),
+    });
     resizeRef.current = null;
     setResizePreview(null);
     event.currentTarget.style.cursor = "ew-resize";
@@ -283,45 +268,25 @@ export function SpreadsheetTimetable({ data, update }: Props) {
     if (conflicts(session.id, weekday, room, boundedIndex, boundedIndex + duration)) {
       return;
     }
-    update(
-      {
-        ...data,
-        sessions: data.sessions.map((item) =>
-          item.id === session.id
-            ? {
-              ...item,
-              weekday,
-              room,
-              time: timeAt(boundedIndex),
-              endTime: timeAt(boundedIndex + duration),
-            }
-            : item,
-        ),
-      },
-      "تم تحريك الحصة",
-    );
+    void saveSession?.({
+      ...session,
+      weekday,
+      room,
+      time: timeAt(boundedIndex),
+      endTime: timeAt(boundedIndex + duration),
+    });
   };
-  const addRoom = (event: FormEvent) => {
+  const addRoom = async (event: FormEvent) => {
     event.preventDefault();
     const name = roomForm.trim();
     if (!name || data.rooms.some((room) => room.name === name && room.id !== editingRoom?.id)) return;
     if (editingRoom) {
-      update({ ...data, rooms: data.rooms.map(room => room.id === editingRoom.id ? { ...room, name } : room), sessions: data.sessions.map(session => session.room === editingRoom.name ? { ...session, room: name } : session) }, "تم تعديل القاعة");
+      if (!(await saveRoom?.({ id: editingRoom.id, name }))) return;
       setEditingRoom(null);
-    } else update({ ...data, rooms: [...data.rooms, { id: Date.now(), name }] }, "تمت إضافة القاعة");
+    } else if (!(await saveRoom?.({ name }))) return;
     setRoomForm("");
   };
-  const removeRoom = (room: Room) =>
-    update(
-      {
-        ...data,
-        rooms: data.rooms.filter((item) => item.id !== room.id),
-        sessions: data.sessions.map((session) =>
-          session.room === room.name ? { ...session, room: "" } : session,
-        ),
-      },
-      "تم حذف القاعة",
-    );
+  const removeRoom = (room: Room) => void deleteRoom?.(room.id);
   return (
     <>
       <PageTitle
@@ -535,14 +500,18 @@ export function SpreadsheetTimetable({ data, update }: Props) {
                             >
                               <Edit3 size={11} />
                             </button>
-                            <span className="block truncate">
-                              {session.course || session.title}
-                            </span>
+                            <div className="flex min-w-0 items-center gap-1 pl-5">
+                              <span className="min-w-0 truncate">
+                                {session.course || session.title}
+                              </span>
+                              {sessionLevel && (
+                                <span className="shrink-0 rounded-md bg-white/20 px-1.5 py-0.5 text-[8px] font-black ring-1 ring-inset ring-white/25">
+                                  {sessionLevel}
+                                </span>
+                              )}
+                            </div>
                             <span className="block truncate opacity-80">
                               {session.teacher}
-                            </span>
-                            <span className="block truncate text-[9px] opacity-90">
-                              {sessionLevel || "بدون مستوى"}
                             </span>
                             <button
                               type="button"

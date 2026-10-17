@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { initial, type Data } from "@/lib/section-data";
 import { refreshDraftPayouts } from "@/lib/payroll";
-import type { Course, Expense, Teacher } from "@/lib/centman-store";
+import type { Course, Expense, Room, Session, Teacher } from "@/lib/centman-store";
+import { resolveSessionCourse } from "@/lib/session-course";
 
 export function useSectionData() {
   const [data, setData] = useState<Data>(initial);
@@ -287,6 +288,93 @@ export function useSectionData() {
     }
   };
 
+  const refreshAfterMutation = async () => {
+    const refreshed = await fetch("/api/state", { cache: "no-store" });
+    if (!refreshed.ok) throw new Error("database");
+    stateVersion.current = refreshed.headers.get("etag");
+    setData({ ...initial, ...(await refreshed.json()) });
+  };
+
+  const saveSession = async (session: Session) => {
+    try {
+      const linkedCourse = resolveSessionCourse(session, data.courses, data.levels);
+      if (!linkedCourse) throw new Error("تعذر تحديد مادة ومستوى الحصة");
+      const normalizedSession = {
+        ...session,
+        courseId: linkedCourse.id,
+        course: linkedCourse.name,
+      };
+      const response = await fetch(
+        session.id ? `/api/sessions/${session.id}` : "/api/sessions",
+        {
+          method: session.id ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(normalizedSession),
+        },
+      );
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+      await refreshAfterMutation();
+      setToast(session.id ? "تم تعديل الحصة" : "تمت إضافة الحصة");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(
+        error instanceof Error && error.message !== "database"
+          ? error.message
+          : "تعذر حفظ الحصة",
+      );
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
+  const saveRoom = async (room: Pick<Room, "name"> & { id?: number }) => {
+    try {
+      const response = await fetch(room.id ? `/api/rooms/${room.id}` : "/api/rooms", {
+        method: room.id ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(room),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+      await refreshAfterMutation();
+      setToast(room.id ? "تم تعديل القاعة" : "تمت إضافة القاعة");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(
+        error instanceof Error && error.message !== "database"
+          ? error.message
+          : "تعذر حفظ القاعة",
+      );
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
+  const deleteRoom = async (id: number) => {
+    try {
+      const response = await fetch(`/api/rooms/${id}`, { method: "DELETE", cache: "no-store" });
+      if (!response.ok) {
+        const details = await response.json().catch(() => null);
+        throw new Error(details?.error || "database");
+      }
+      await refreshAfterMutation();
+      setToast("تم حذف القاعة");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(
+        error instanceof Error && error.message !== "database"
+          ? error.message
+          : "تعذر حذف القاعة",
+      );
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
   return {
     data,
     update,
@@ -297,6 +385,9 @@ export function useSectionData() {
     deleteTeacher,
     saveCourse,
     deleteCourse,
+    saveSession,
+    saveRoom,
+    deleteRoom,
     toast,
   };
 }

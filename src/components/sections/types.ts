@@ -1,7 +1,7 @@
 "use client";
 
 import type { Data } from "@/lib/section-data";
-import type { Expense, Teacher } from "@/lib/centman-store";
+import type { Expense, Room, Session, Teacher } from "@/lib/centman-store";
 
 
 export type AdminUser = { id: number; name: string; username: string; role: "ADMIN" | "SUPER_ADMIN"; active: boolean; createdAt: string };
@@ -16,4 +16,7 @@ export type Props = {
     teacher: Pick<Teacher, "name" | "specialty" | "commission"> & { id?: number },
   ) => Promise<boolean>;
   deleteTeacher?: (id: number) => Promise<void>;
+  saveSession?: (session: Session) => Promise<boolean>;
+  saveRoom?: (room: Pick<Room, "name"> & { id?: number }) => Promise<boolean>;
+  deleteRoom?: (id: number) => Promise<boolean>;
 };

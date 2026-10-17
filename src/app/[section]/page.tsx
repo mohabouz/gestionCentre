@@ -31,6 +31,9 @@ export default function SectionPage() {
     deleteTeacher,
     saveCourse,
     deleteCourse,
+    saveSession,
+    saveRoom,
+    deleteRoom,
     toast,
   } = useSectionData();
   const { user } = useAuth();
@@ -101,7 +104,13 @@ export default function SectionPage() {
   ) : section === "payouts" ? (
     <Payouts data={data} update={update} />
   ) : section === "schedule" ? (
-    <Schedule data={data} update={update} />
+    <Schedule
+      data={data}
+      update={update}
+      saveSession={saveSession}
+      saveRoom={saveRoom}
+      deleteRoom={deleteRoom}
+    />
   ) : section === "attendance" ? (
     <Attendance data={data} update={update} />
   ) : (
