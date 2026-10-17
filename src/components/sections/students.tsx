@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { Button, Card, PageTitle } from "@/components/centman-shell";
 import { Payment, Student, money, today } from "@/lib/centman-store";
@@ -22,6 +22,13 @@ export function Students({ data, update }: Props) {
   const [historyStudent, setHistoryStudent] = useState<Student | null>(null);
   const [registeringPayment, setRegisteringPayment] = useState<Payment | null>(null);
   const [open, setOpen] = useState(false);
+  const [subscriptionFee, setSubscriptionFee] = useState(200);
+  useEffect(() => {
+    fetch("/api/settings", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("settings")))
+      .then((settings) => setSubscriptionFee(Math.max(0, Number(settings.subscriptionFee) || 0)))
+      .catch(() => undefined);
+  }, []);
   const enrolledCourseNames = (studentId: number) =>
     data.enrollments
       .filter(
@@ -332,6 +339,7 @@ export function Students({ data, update }: Props) {
           courses={data.courses}
           levels={data.levels}
           enrollments={data.enrollments}
+          subscriptionFee={subscriptionFee}
           onClose={() => setOpen(false)}
           onSave={(student, courseIds, paidAmounts) => {
             save(student, courseIds, paidAmounts);

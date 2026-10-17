@@ -14,6 +14,7 @@ export function StudentEnrollmentForm({
   courses,
   levels,
   enrollments,
+  subscriptionFee,
   onClose,
   onSave,
 }: {
@@ -21,6 +22,7 @@ export function StudentEnrollmentForm({
   courses: Course[];
   levels: Level[];
   enrollments: Enrollment[];
+  subscriptionFee: number;
   onClose: () => void;
   onSave: (
     student: Student,
@@ -45,12 +47,12 @@ export function StudentEnrollmentForm({
       due: 0,
       lastPayment: today,
       enrollmentDate: today,
-      enrollmentFee: 200,
+      enrollmentFee: subscriptionFee,
       subscriptionYear: 2026,
     },
   );
   const [courseIds, setCourseIds] = useState<number[]>(activeIds);
-  const [annualPaid, setAnnualPaid] = useState(student?.enrollmentFee || 0);
+  const [annualPaid, setAnnualPaid] = useState(0);
   const [coursePaid, setCoursePaid] = useState<Record<number, number>>(() =>
     Object.fromEntries(activeIds.map((courseId) => [courseId, 0])),
   );
@@ -72,6 +74,9 @@ export function StudentEnrollmentForm({
           : value,
     });
   const available = courses.filter((course) => !courseIds.includes(course.id));
+  const isRenewal = Boolean(
+    student && form.subscriptionYear !== student.subscriptionYear,
+  );
   return (
     <Modal
       title={student ? "تعديل الطالب والتسجيلات" : "اشتراك أول للطالب"}
@@ -155,10 +160,21 @@ export function StudentEnrollmentForm({
             label="سنة الاشتراك"
             type="number"
             value={form.subscriptionYear || 2026}
-            onChange={field("subscriptionYear")}
+            onChange={(value) => {
+              const subscriptionYear = Number(value);
+              setForm({
+                ...form,
+                subscriptionYear,
+                enrollmentFee:
+                  subscriptionYear !== student?.subscriptionYear
+                    ? subscriptionFee
+                    : student?.enrollmentFee ?? subscriptionFee,
+              });
+              setAnnualPaid(0);
+            }}
           />
         </div>
-        {!student && (
+        {(!student || isRenewal) && (
           <div className="rounded-xl border border-[#e5e5e5] bg-[#f7f7f7] p-4">
             <p className="mb-3 text-xs font-black text-[#292929]">
               دفعة التسجيل السنوي

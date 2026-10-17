@@ -40,6 +40,7 @@ export function SettingsPage() {
     phone: "0550000000",
     language,
     notifications: true,
+    subscriptionFee: 200,
     logo: "",
   });
   useEffect(() => {
@@ -136,6 +137,11 @@ export function SettingsPage() {
   return (
     <>
       <PageTitle eyebrow="النظام" title="الإعدادات" />
+      {saved && (
+        <p className="mb-4 rounded-xl bg-[#e6f5ee] px-4 py-3 text-xs font-bold text-[#008a55]">
+          تم حفظ الإعدادات بنجاح
+        </p>
+      )}
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
           <h3 className="mb-5 font-black text-[#17251f]">الهوية البصرية</h3>
@@ -192,11 +198,29 @@ export function SettingsPage() {
                 className="h-4 w-4 accent-[#00a060]"
               />
             </label>
-            {saved && (
-              <p className="text-xs font-bold text-[#00a060]">
-                تم حفظ الإعدادات بنجاح
+            <Button onClick={save}>حفظ إعدادات النظام</Button>
+          </div>
+        </Card>
+        <Card className="lg:col-span-2">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div className="max-w-xl flex-1">
+              <h3 className="mb-2 font-black text-[#17251f]">رسوم الاشتراك السنوية</h3>
+              <p className="mb-4 text-xs leading-6 text-[#84938b]">
+                تُطبق تلقائياً على الاشتراكات الجديدة والتجديدات، ولا تغيّر الرسوم المسجلة سابقاً.
               </p>
-            )}
+              <Input
+                label="المبلغ السنوي (MAD)"
+                type="number"
+                value={form.subscriptionFee}
+                onChange={(value) =>
+                  setForm({
+                    ...form,
+                    subscriptionFee: Math.max(0, Number(value) || 0),
+                  })
+                }
+              />
+            </div>
+            <Button onClick={save}>حفظ رسوم الاشتراك</Button>
           </div>
         </Card>
         {user?.role === "SUPER_ADMIN" && <Card className="border-[#f0d2cc] lg:col-span-2">
