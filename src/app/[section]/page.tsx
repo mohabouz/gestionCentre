@@ -3145,8 +3145,13 @@ function SpreadsheetTimetable({ data, update }: Props) {
                             }}
                             onDragEnd={() => { setDragPreview(null); dragRef.current = null; }}
                             onDoubleClick={() => editSession(session)}
-                            className="relative h-full cursor-grab rounded-xl border px-3 py-2 font-bold shadow-sm"
-                            style={{ backgroundColor: teacherTint, borderColor: teacherColor, color: "#ffffff" }}
+                            className="relative h-full cursor-grab rounded-xl border px-3 py-2 font-bold shadow-md"
+                            style={{
+                              backgroundColor: teacherTint,
+                              backgroundImage: `linear-gradient(135deg, ${teacherColor} 0%, ${teacherTint} 100%)`,
+                              borderColor: teacherColor,
+                              color: "#ffffff",
+                            }}
                           >
                             <button
                               type="button"

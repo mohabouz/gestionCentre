@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { LanguageProvider } from "@/components/language-provider";
 import { AuthGate } from "@/components/auth-gate";
 import { AuthProvider } from "@/components/auth-provider";
+import "@fontsource-variable/cairo";
 import "./globals.css";
 
 export const metadata: Metadata = {
