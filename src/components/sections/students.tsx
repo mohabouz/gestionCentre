@@ -5,7 +5,6 @@ import { Plus, Search } from "lucide-react";
 import { Button, Card, PageTitle } from "@/components/centman-shell";
 import { Payment, Student, money, today } from "@/lib/centman-store";
 import { discountedPrice, paymentBillingMonth, remainingPaymentAmount } from "@/lib/monthly-billing";
-import { registerPaymentCollection } from "@/lib/payment-registration";
 
 
 import { Actions, EmptyState, Table, Td, Th } from "@/components/sections/shared-ui";
@@ -15,7 +14,7 @@ import { StudentHistory } from "@/components/sections/student-history";
 import { StudentEnrollmentForm } from "@/components/sections/student-enrollment-form";
 
 
-export function Students({ data, update, deleteStudent }: Props) {
+export function Students({ data, update, deleteStudent, registerPayment }: Props) {
   const [query, setQuery] = useState("");
   const [enrollmentFilter, setEnrollmentFilter] = useState("all");
   const [editing, setEditing] = useState<Student | null>(null);
@@ -355,13 +354,10 @@ export function Students({ data, update, deleteStudent }: Props) {
         <PaymentRegisterModal
           payment={registeringPayment}
           onClose={() => setRegisteringPayment(null)}
-          onSave={(amount, method) => {
-            const remaining = remainingPaymentAmount(registeringPayment);
-            update(
-              registerPaymentCollection(data, registeringPayment, amount, method),
-              amount < remaining ? "تم تسجيل دفعة جزئية" : "تم تسجيل الدفعة وإصدار الوصل",
-            );
-            setRegisteringPayment(null);
+          onSave={async (amount, method) => {
+            if (await registerPayment?.(registeringPayment.id, amount, method)) {
+              setRegisteringPayment(null);
+            }
           }}
         />
       )}

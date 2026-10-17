@@ -12,6 +12,7 @@ import type {
   Teacher,
 } from "@/lib/centman-store";
 import { resolveSessionCourse } from "@/lib/session-course";
+import { today } from "@/lib/centman-store";
 
 export function useSectionData() {
   const [data, setData] = useState<Data>(initial);
@@ -410,6 +411,30 @@ export function useSectionData() {
     }
   };
 
+  const registerPayment = async (
+    paymentId: number,
+    amount: number,
+    method: NonNullable<import("@/lib/centman-store").Payment["method"]>,
+  ) => {
+    try {
+      const response = await fetch(`/api/payments/${paymentId}/collections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount, method, date: today }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+      await refreshAfterMutation();
+      setToast(result?.partial ? "تم تسجيل دفعة جزئية" : "تم تسجيل الدفعة وإصدار الوصل");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(error instanceof Error && error.message !== "database" ? error.message : "تعذر تسجيل الدفعة");
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
   return {
     data,
     update,
@@ -424,6 +449,7 @@ export function useSectionData() {
     saveRoom,
     deleteRoom,
     saveAttendance,
+    registerPayment,
     toast,
   };
 }

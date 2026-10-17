@@ -17,7 +17,7 @@ import { PaymentRevisionModal } from "@/components/sections/payment-revision-mod
 import { MonthlyStudentPaymentModal } from "@/components/sections/monthly-student-payment-modal";
 
 
-export function Payments({ data, update, monthly }: Props & { monthly: boolean }) {
+export function Payments({ data, update, registerPayment, monthly }: Props & { monthly: boolean }) {
   const [query, setQuery] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [courseFilter, setCourseFilter] = useState<number | null>(null);
@@ -74,15 +74,13 @@ export function Payments({ data, update, monthly }: Props & { monthly: boolean }
       `تم توليد ${generated.length} دفعة لشهر ${formatBillingMonth(selectedMonth)}`,
     );
   };
-  const record = (payment: Payment, amount: number, method: NonNullable<Payment["method"]>) => {
+  const record = async (payment: Payment, amount: number, method: NonNullable<Payment["method"]>) => {
     const remaining = remainingPaymentAmount(payment);
     const paidNow = Math.max(0, Math.min(amount, remaining));
     if (!paidNow) return;
-    update(
-      registerPaymentCollection(data, payment, paidNow, method),
-      paidNow < remaining ? "تم تسجيل دفعة جزئية" : "تم تسجيل الدفعة وإصدار الوصل",
-    );
-    setRegisteringPayment(null);
+    if (await registerPayment?.(payment.id, paidNow, method)) {
+      setRegisteringPayment(null);
+    }
   };
   const returnToDraft = (payment: Payment) => {
     const updatedPayments = data.payments.map((item) =>
@@ -525,7 +523,7 @@ export function Payments({ data, update, monthly }: Props & { monthly: boolean }
         <PaymentRegisterModal
           payment={registeringPayment}
           onClose={() => setRegisteringPayment(null)}
-          onSave={(amount, method) => record(registeringPayment, amount, method)}
+          onSave={(amount, method) => void record(registeringPayment, amount, method)}
         />
       )}
       {registeringStudentPayments && (
