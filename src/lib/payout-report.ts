@@ -1,9 +1,12 @@
 import type { Teacher } from "@/lib/centman-store";
 import { formatBillingMonth } from "@/lib/centman-store";
+import { courseLevelLabel } from "@/lib/course-level";
 import type { Data } from "@/lib/section-data";
 
 type ReportRow = {
-  group: string;
+  subject: string;
+  level: string;
+  levelOrder: number;
   student: string;
   paid: number;
   teacherShare: number;
@@ -36,24 +39,49 @@ function teacherPaymentRows(data: Data, teacher: Teacher, month: string): Report
     const teacherSubjects = subjects.filter((subject) => subject.teacher === teacher.name);
     if (!teacherSubjects.length) continue;
 
-    const key = `${course.id}:${student.id}`;
-    const teacherAllocatedPayment = collection.amount * teacherSubjects.length / subjects.length;
-    const existing = grouped.get(key);
-    if (existing) {
-      existing.paid += collection.amount;
-      existing.teacherShare += teacherAllocatedPayment * teacher.commission / 100;
-    } else {
-      grouped.set(key, {
-        group: course.name,
-        student: student.name,
-        paid: collection.amount,
-        teacherShare: teacherAllocatedPayment * teacher.commission / 100,
-      });
+    for (const subject of teacherSubjects) {
+      const key = `${course.id}:${subject.id}:${student.id}`;
+      const allocatedPayment = collection.amount / subjects.length;
+      const level = courseLevelLabel(subject, data.levels)
+        || courseLevelLabel(course, data.levels)
+        || "بدون مستوى";
+      const levelIds = subject.levelIds?.length
+        ? subject.levelIds
+        : subject.levelId != null
+          ? [subject.levelId]
+          : course.levelIds?.length
+            ? course.levelIds
+            : course.levelId != null
+              ? [course.levelId]
+              : [];
+      const levelOrder = Math.min(
+        ...data.levels
+          .filter((item) => levelIds.some((id) => Number(id) === Number(item.id)))
+          .map((item) => item.sortOrder),
+        Number.MAX_SAFE_INTEGER,
+      );
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.paid += allocatedPayment;
+        existing.teacherShare += allocatedPayment * teacher.commission / 100;
+      } else {
+        grouped.set(key, {
+          subject: subject.name,
+          level,
+          levelOrder,
+          student: student.name,
+          paid: allocatedPayment,
+          teacherShare: allocatedPayment * teacher.commission / 100,
+        });
+      }
     }
   }
 
   return [...grouped.values()].sort((left, right) =>
-    left.group.localeCompare(right.group, "ar") || left.student.localeCompare(right.student, "ar"),
+    left.levelOrder - right.levelOrder
+      || left.level.localeCompare(right.level, "ar")
+      || left.subject.localeCompare(right.subject, "ar")
+      || left.student.localeCompare(right.student, "ar"),
   );
 }
 
@@ -76,7 +104,7 @@ export function printTeacherPaymentReport(data: Data, teacher: Teacher, month: s
   const totalTeacherShare = rows.reduce((sum, row) => sum + row.teacherShare, 0);
   const tableRows = rows.map((row) => `
     <tr>
-      <td>${escapeHtml(row.group)}</td>
+      <td>${escapeHtml(`${row.subject} - ${row.level}`)}</td>
       <td>${escapeHtml(row.student)}</td>
       <td>${row.paid.toLocaleString("fr-MA")} MAD</td>
       <td>${Math.round(row.teacherShare).toLocaleString("fr-MA")} MAD</td>
@@ -110,7 +138,7 @@ export function printTeacherPaymentReport(data: Data, teacher: Teacher, month: s
           <div>مستحق الأستاذ: <strong>${Math.round(totalTeacherShare).toLocaleString("fr-MA")} MAD</strong></div>
         </div>
         <table>
-          <thead><tr><th>المجموعة / المادة</th><th>التلميذ</th><th>المبلغ المؤدى</th><th>حصة الأستاذ</th></tr></thead>
+          <thead><tr><th>المادة - المستوى</th><th>التلميذ</th><th>المبلغ المؤدى</th><th>حصة الأستاذ</th></tr></thead>
           <tbody>${tableRows || '<tr><td colspan="4">لا توجد دفعات مسجلة لهذا الشهر.</td></tr>'}</tbody>
           <tfoot><tr><td colspan="2">المجموع</td><td>${Math.round(totalPaid).toLocaleString("fr-MA")} MAD</td><td>${Math.round(totalTeacherShare).toLocaleString("fr-MA")} MAD</td></tr></tfoot>
         </table>

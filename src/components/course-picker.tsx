@@ -2,24 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Course, Level, money } from "@/lib/centman-store";
+import { courseLevelLabel } from "@/lib/course-level";
 import { useEscapeLayer } from "@/components/escape-layer";
 
-export function courseLevelLabel(course: Course, levels: Level[]) {
-  const ids = course.levelIds?.length
-    ? course.levelIds
-    : course.levelId != null
-      ? [course.levelId]
-      : course.level
-        ? [course.level.id]
-        : [];
-  const assigned = levels.filter((level) =>
-    ids.some((id) => Number(id) === Number(level.id)),
-  );
-  return (assigned.length ? assigned : course.level ? [course.level] : [])
-    .map((level) => level.abbreviation)
-    .filter(Boolean)
-    .join("، ");
-}
+export { courseLevelLabel } from "@/lib/course-level";
 
 export function CoursePicker({
   courses,
