@@ -1,0 +1,129 @@
+"use client";
+
+import { useState } from "react";
+import { MessageCircle, Phone } from "lucide-react";
+import { Button, Card, PageTitle } from "@/components/centman-shell";
+import { Payment, PaymentCollection, Student, money, today } from "@/lib/centman-store";
+import { paymentBillingMonth, remainingPaymentAmount } from "@/lib/monthly-billing";
+
+
+import { EmptyState, Table, Td, Th } from "@/components/sections/shared-ui";
+import type { Props } from "@/components/sections/types";
+import { LatePaymentModal } from "@/components/sections/late-payment-modal";
+
+
+export function LateStudents({ data, update }: Props) {
+  const late = data.students.filter((s) => s.due > 0);
+  const [payingStudent, setPayingStudent] = useState<Student | null>(null);
+  const outstandingPayments = (studentId: number) =>
+    data.payments
+      .filter((payment) => payment.studentId === studentId && payment.status !== "ملغاة" && remainingPaymentAmount(payment) > 0)
+      .sort((left, right) => (paymentBillingMonth(left) || left.date).localeCompare(paymentBillingMonth(right) || right.date));
+  const registerPartialPayment = (student: Student, requestedAmount: number, method: NonNullable<Payment["method"]>) => {
+    const invoices = outstandingPayments(student.id);
+    const totalDue = invoices.reduce((sum, payment) => sum + remainingPaymentAmount(payment), 0);
+    const paidNow = Math.max(0, Math.min(requestedAmount, totalDue));
+    if (!paidNow) return;
+    let remaining = paidNow;
+    let collectionIndex = 0;
+    const createdCollections: PaymentCollection[] = [];
+    const payments = data.payments.map((payment) => {
+      if (!invoices.some((invoice) => invoice.id === payment.id) || remaining <= 0) return payment;
+      const applied = Math.min(remaining, remainingPaymentAmount(payment));
+      if (!applied) return payment;
+      remaining -= applied;
+      const nextAmount = payment.amount + applied;
+      const totalAmount = payment.totalAmount ?? payment.amount;
+      const receiptNumber = `REC-${today.replaceAll("-", "")}-${String(student.id).slice(-4)}-${String(Date.now()).slice(-5)}-${collectionIndex + 1}`;
+      createdCollections.push({
+        id: Date.now() + collectionIndex,
+        paymentId: payment.id,
+        amount: applied,
+        date: today,
+        method,
+        receiptNumber,
+      });
+      collectionIndex += 1;
+      return {
+        ...payment,
+        amount: nextAmount,
+        status: nextAmount >= totalAmount ? ("مدفوع" as const) : ("جزئي" as const),
+        date: today,
+        method,
+        receiptNumber,
+      };
+    });
+    const due = payments
+      .filter((payment) => payment.studentId === student.id && payment.status !== "ملغاة")
+      .reduce((sum, payment) => sum + remainingPaymentAmount(payment), 0);
+    update(
+      {
+        ...data,
+        payments,
+        collections: [...data.collections, ...createdCollections],
+        students: data.students.map((item) => item.id === student.id ? { ...item, due, lastPayment: today } : item),
+      },
+      paidNow < totalDue ? "تم تسجيل دفعة جزئية" : "تم تسديد جميع المستحقات",
+    );
+    setPayingStudent(null);
+  };
+  return (
+    <>
+      <PageTitle eyebrow="المتابعة" title="الطلاب المتأخرون" />
+      <Card>
+        <Table>
+          <Th>الطالب</Th>
+          <Th>الهاتف</Th>
+          <Th>الدورة</Th>
+          <Th>المستحق</Th>
+          <Th>تواصل</Th>
+          <Th>إجراء</Th>
+          {late.map((s) => (
+            <tr key={s.id}>
+              <Td>
+                <b>{s.name}</b>
+              </Td>
+              <Td>{s.phone}</Td>
+              <Td>{s.course}</Td>
+              <Td className="font-bold text-[#d56558]">{money(s.due)}</Td>
+              <Td>
+                <div className="flex gap-2">
+                  <a
+                    aria-label="واتساب"
+                    href={`https://wa.me/213${s.phone.slice(1)}?text=${encodeURIComponent(`السلام عليكم، نذكركم بدفع مستحقات ${s.name}`)}`}
+                    target="_blank"
+                    className="rounded-lg bg-[#e9f8ef] p-2 text-[#00a060]"
+                  >
+                    <MessageCircle size={15} />
+                  </a>
+                  <a
+                    aria-label="اتصال"
+                    href={`tel:${s.phone}`}
+                    className="rounded-lg bg-[#eef4ff] p-2 text-[#4c8ce8]"
+                  >
+                    <Phone size={15} />
+                  </a>
+                </div>
+              </Td>
+              <Td>
+                <Button onClick={() => setPayingStudent(s)}>
+                  دفع الآن
+                </Button>
+              </Td>
+            </tr>
+          ))}
+        </Table>
+        {!late.length && <EmptyState text="لا توجد مستحقات متأخرة" />}
+      </Card>
+      {payingStudent && (
+        <LatePaymentModal
+          student={payingStudent}
+          payments={outstandingPayments(payingStudent.id)}
+          onClose={() => setPayingStudent(null)}
+          onSave={(amount, method) => registerPartialPayment(payingStudent, amount, method)}
+        />
+      )}
+    </>
+  );
+}
+
