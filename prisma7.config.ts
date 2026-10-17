@@ -9,6 +9,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Prisma Migrate remains local. Remote Turso migrations are applied with
+    // the Turso CLI as described in README.md.
+    url: process.env["DATABASE_URL"] || "file:./dev.db",
   },
 });

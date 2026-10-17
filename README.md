@@ -77,3 +77,20 @@ tests/                   Dependency-free Node tests
 - `ADMIN`: operational access; financial administration is restricted by the API and interface.
 
 Authentication sessions are stored in SQLite and delivered through an HTTP-only cookie with a 12-hour lifetime.
+
+## Vercel database
+
+Vercel cannot persist or share a local SQLite file between serverless function instances. The web deployment therefore uses a hosted Turso/libSQL database, while local development and the packaged Windows application continue using `better-sqlite3` and their local `DATABASE_URL`.
+
+1. Create a Turso database and an authentication token.
+2. Apply every SQL file under `prisma/migrations/` to the empty Turso database in filename order. Prisma Migrate itself remains configured for the local SQLite development database; remote libSQL migrations are applied with the Turso CLI.
+3. Add these variables to the Vercel project for Production, Preview, and Development as appropriate:
+
+```env
+TURSO_DATABASE_URL="libsql://your-database.turso.io"
+TURSO_AUTH_TOKEN="your-token"
+```
+
+4. Redeploy the project. Open `/setup` once to create the first super-admin in the hosted database, then sign in normally.
+
+Do not configure Vercel with `DATABASE_URL=file:...`. `DATABASE_URL` is reserved for the local SQLite database; Vercel requires `TURSO_DATABASE_URL`.
