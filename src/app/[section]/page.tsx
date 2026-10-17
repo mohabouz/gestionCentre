@@ -185,7 +185,10 @@ export default function SectionPage() {
       update={(next, message) => update({ ...data, ...next }, message)}
     />
   ) : section === "levels" ? (
-    <LevelManagement levels={data.levels} />
+    <LevelManagement
+      levels={data.levels}
+      onUpdate={(levels) => update({ ...data, levels }, "تم حفظ تعديلات المستوى")}
+    />
   ) : section === "expenses" ? (
     <Expenses data={data} update={update} />
   ) : section === "registrations" || section === "payments" ? (
