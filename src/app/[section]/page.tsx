@@ -59,6 +59,7 @@ import { courseLevelLabel } from "@/components/course-picker";
 import { AppLanguage, useLanguage } from "@/components/language-provider";
 import { useAuth } from "@/components/auth-provider";
 import { hasSessionConflict, snapByCoverage } from "@/lib/timetable";
+import { resolveSessionCourse } from "@/lib/session-course";
 
 type Data = {
   students: Student[];
@@ -2702,10 +2703,21 @@ function SpreadsheetTimetable({ data, update }: Props) {
   } | null>(null);
   const [roomForm, setRoomForm] = useState("");
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    title: string;
+    teacher: string;
+    course: string;
+    courseId: number | null;
+    weekday: string;
+    room: string;
+    time: string;
+    endTime: string;
+    date: string;
+  }>({
     title: "",
     teacher: data.teachers[0]?.name || "",
     course: data.courses[0]?.name || "",
+    courseId: data.courses[0]?.id ?? null,
     weekday: "الاثنين",
     room: data.rooms[0]?.name || "",
     time: "16:00",
@@ -2777,11 +2789,13 @@ function SpreadsheetTimetable({ data, update }: Props) {
     setEditingSession(null);
   };
   const editSession = (session: Session) => {
+    const linkedCourse = resolveSessionCourse(session, data.courses, data.levels);
     setEditingSession(session);
     setForm({
       title: session.title,
       teacher: session.teacher,
-      course: session.course,
+      course: linkedCourse?.name || session.course,
+      courseId: linkedCourse?.id ?? session.courseId ?? null,
       weekday: session.weekday || "الاثنين",
       room: session.room,
       time: session.time,
@@ -2975,6 +2989,17 @@ function SpreadsheetTimetable({ data, update }: Props) {
           <Button
             onClick={() => {
               setEditingSession(null);
+              setForm({
+                title: "",
+                teacher: data.teachers[0]?.name || "",
+                course: data.courses[0]?.name || "",
+                courseId: data.courses[0]?.id ?? null,
+                weekday: "الاثنين",
+                room: data.rooms[0]?.name || "",
+                time: "16:00",
+                endTime: "17:00",
+                date: today,
+              });
               setOpen(true);
             }}
           >
@@ -3054,7 +3079,7 @@ function SpreadsheetTimetable({ data, update }: Props) {
                     if (session) {
                       const sessionStartIndex = index;
                       const [teacherColor, teacherTint] = teacherColors(session.teacher);
-                      const sessionCourse = data.courses.find((course) => Number(course.id) === Number(session.courseId)) || data.courses.find((course) => course.name === session.course);
+                      const sessionCourse = resolveSessionCourse(session, data.courses, data.levels);
                       const sessionLevel = sessionCourse ? courseLevelLabel(sessionCourse, data.levels) : "";
                       const span = Math.max(
                         1,
@@ -3313,14 +3338,17 @@ function SpreadsheetTimetable({ data, update }: Props) {
               </span>
               <select
                 required
-                value={form.course}
-                onChange={(event) =>
-                  setForm({ ...form, course: event.target.value })
-                }
+                value={form.courseId ?? ""}
+                onChange={(event) => {
+                  const course = data.courses.find((item) => Number(item.id) === Number(event.target.value));
+                  setForm({ ...form, course: course?.name || "", courseId: course?.id ?? null });
+                }}
                 className="w-full rounded-xl border border-[#dce7df] bg-white p-3 text-sm"
               >
                 {data.courses.map((course) => (
-                  <option key={course.id}>{course.name}</option>
+                  <option key={course.id} value={course.id}>
+                    {course.name} — {courseLevelLabel(course, data.levels) || "بدون مستوى"}
+                  </option>
                 ))}
               </select>
             </label>

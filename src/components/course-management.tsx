@@ -184,10 +184,10 @@ function CourseModal({ course, teachers, levels, subjects, onClose, onSave }: { 
 }
 
 function LevelSelector({ levels, selected, onChange }: { levels: Level[]; selected: number[]; onChange: (ids: number[]) => void }) {
-  const moroccan = levels.filter((level) => level.curriculum === "MOROCCAN").sort((a, b) => a.sortOrder - b.sortOrder);
+  const availableLevels = [...levels].sort((a, b) => a.sortOrder - b.sortOrder);
   return (
     <CheckboxList title="المستويات الدراسية" empty="لا توجد مستويات متاحة">
-      {moroccan.map((level) => <CheckRow key={level.id} checked={selected.includes(level.id)} onChange={() => onChange(selected.includes(level.id) ? selected.filter((id) => id !== level.id) : [...selected, level.id])}><b>{level.nameAr}</b><small className="mr-2 text-[#8a8a8a]">{level.abbreviation}</small></CheckRow>)}
+      {availableLevels.map((level) => <CheckRow key={level.id} checked={selected.includes(level.id)} onChange={() => onChange(selected.includes(level.id) ? selected.filter((id) => id !== level.id) : [...selected, level.id])}><b>{level.nameAr}</b><small className="mr-2 text-[#8a8a8a]">{level.abbreviation} • {level.curriculum === "INTERNATIONAL" ? "المسار الدولي" : "المسار العام"}</small></CheckRow>)}
     </CheckboxList>
   );
 }

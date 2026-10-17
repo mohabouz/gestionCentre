@@ -3,9 +3,10 @@
 import { FormEvent, useMemo, useState } from "react";
 import { BookOpen, Edit3, GraduationCap, School, X } from "lucide-react";
 import { Button, Card, PageTitle } from "@/components/centman-shell";
-import type { Level, LevelCycle } from "@/lib/centman-store";
+import type { Level, LevelCurriculum, LevelCycle } from "@/lib/centman-store";
 
 type CycleFilter = "الكل" | LevelCycle;
+type CurriculumFilter = "ALL" | LevelCurriculum;
 
 const cycleConfig: Record<LevelCycle, { title: string; icon: typeof School; color: string }> = {
   ابتدائي: {
@@ -32,6 +33,12 @@ const filters: Array<{ value: CycleFilter; label: string }> = [
   { value: "تأهيلي", label: "الثانوي التأهيلي" },
 ];
 
+const curriculumFilters: Array<{ value: CurriculumFilter; label: string }> = [
+  { value: "ALL", label: "جميع المسارات" },
+  { value: "MOROCCAN", label: "المسار العام" },
+  { value: "INTERNATIONAL", label: "المسار الدولي" },
+];
+
 export function LevelManagement({
   levels,
   onUpdate,
@@ -40,17 +47,18 @@ export function LevelManagement({
   onUpdate: (levels: Level[]) => void;
 }) {
   const [filter, setFilter] = useState<CycleFilter>("الكل");
+  const [curriculum, setCurriculum] = useState<CurriculumFilter>("ALL");
   const [editing, setEditing] = useState<Level | null>(null);
   const visibleLevels = useMemo(
     () =>
       levels
         .filter(
           (level) =>
-            level.curriculum === "MOROCCAN" &&
+            (curriculum === "ALL" || level.curriculum === curriculum) &&
             (filter === "الكل" || level.cycle === filter),
         )
         .sort((left, right) => left.sortOrder - right.sortOrder),
-    [filter, levels],
+    [curriculum, filter, levels],
   );
 
   const saveLevel = (level: Level) => {
@@ -60,24 +68,42 @@ export function LevelManagement({
 
   return (
     <>
-      <PageTitle eyebrow="البرنامج المغربي" title="المستويات الدراسية" />
+      <PageTitle eyebrow="البرامج الدراسية" title="المستويات الدراسية" />
 
-      <Card className="mb-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="text-sm font-black text-[#17251f]">تصفية المستويات</h3>
-            <p className="mt-1 text-xs text-[#84938b]">اختر السلك الدراسي الذي تريد عرضه</p>
+      <Card className="mb-5 !p-3 sm:!p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+          <div className="flex items-center justify-between gap-3 xl:w-44 xl:shrink-0">
+            <div>
+              <h3 className="text-sm font-black text-[#17251f]">تصفية المستويات</h3>
+              <p className="mt-0.5 text-[11px] text-[#84938b]">{visibleLevels.length} مستوى ظاهر</p>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-1 overflow-x-auto rounded-xl bg-[#f4f5fa] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {curriculumFilters.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => setCurriculum(item.value)}
+                className={`shrink-0 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
+                  curriculum === item.value
+                    ? "bg-white text-[#5054c0] shadow-sm ring-1 ring-[#dfe1f1]"
+                    : "text-[#6f7191] hover:bg-white/70"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1 overflow-x-auto rounded-xl bg-[#f1f7f3] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:flex-1">
             {filters.map((item) => (
               <button
                 key={item.value}
                 type="button"
                 onClick={() => setFilter(item.value)}
-                className={`rounded-xl px-4 py-2.5 text-xs font-bold transition-colors ${
+                className={`shrink-0 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
                   filter === item.value
-                    ? "bg-[#00a060] text-white"
-                    : "border border-[#dbe7df] bg-white text-[#53685d] hover:bg-[#f2f7f4]"
+                    ? "bg-white text-[#008a55] shadow-sm ring-1 ring-[#dbe7df]"
+                    : "text-[#60766b] hover:bg-white/70"
                 }`}
               >
                 {item.label}
@@ -87,34 +113,39 @@ export function LevelManagement({
         </div>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {visibleLevels.map((level) => {
           const config = cycleConfig[level.cycle];
           const Icon = config.icon;
           return (
-            <Card key={level.id} className="group relative overflow-hidden">
-              <div className="flex items-start justify-between gap-3">
-                <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${config.color}`}>
-                  <Icon size={21} />
+            <Card key={level.id} className="group relative overflow-hidden !p-4 transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(28,67,47,0.08)]">
+              <div className="flex items-start gap-3">
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${config.color}`}>
+                  <Icon size={19} />
                 </span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate text-sm font-black text-[#17251f]">{level.nameAr}</h3>
+                  <p className="mt-0.5 truncate text-[11px] text-[#84938b]">{level.nameFr}</p>
+                </div>
                 <button
                   type="button"
                   aria-label={`تعديل ${level.nameAr}`}
                   onClick={() => setEditing(level)}
-                  className="rounded-lg bg-[#f2f7f4] p-2 text-[#60766b] transition-colors hover:bg-[#e4e8fd] hover:text-[#5054c0]"
+                  className="shrink-0 rounded-lg p-2 text-[#84938b] transition-colors hover:bg-[#e4e8fd] hover:text-[#5054c0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5054c0]"
                 >
                   <Edit3 size={15} />
                 </button>
               </div>
-              <div className="mt-5">
-                <span className="rounded-lg bg-[#f5f7f6] px-2.5 py-1 text-[10px] font-black text-[#697b70]">
-                  {level.abbreviation}
-                </span>
-                <h3 className="mt-3 text-base font-black text-[#17251f]">{level.nameAr}</h3>
-                <p className="mt-1 text-xs text-[#84938b]">{level.nameFr}</p>
-              </div>
-              <div className="mt-5 border-t border-[#edf1ee] pt-3 text-[11px] font-bold text-[#697b70]">
-                {config.title}
+              <div className="mt-3 flex items-center justify-between gap-2 border-t border-[#edf1ee] pt-3">
+                <div className="flex min-w-0 flex-wrap gap-1.5">
+                  <span className="rounded-lg bg-[#f5f7f6] px-2.5 py-1 text-[10px] font-black text-[#697b70]">
+                    {level.abbreviation}
+                  </span>
+                  <span className={`rounded-lg px-2.5 py-1 text-[10px] font-black ${level.curriculum === "INTERNATIONAL" ? "bg-[#e4e8fd] text-[#5054c0]" : "bg-[#e6f5ee] text-[#008a55]"}`}>
+                    {level.curriculum === "INTERNATIONAL" ? "المسار الدولي" : "المسار العام"}
+                  </span>
+                </div>
+                <span className="shrink-0 text-[10px] font-bold text-[#84938b]">{config.title.replace("التعليم ", "")}</span>
               </div>
             </Card>
           );
