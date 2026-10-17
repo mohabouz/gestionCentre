@@ -15,11 +15,16 @@ type Data = {
   enrollments: Enrollment[];
 };
 
-type Props = { data: Data; update: (data: Data, message?: string) => void };
+type Props = {
+  data: Data;
+  update: (data: Data, message?: string) => void;
+  saveCourse: (course: Course) => Promise<boolean>;
+  deleteCourseById: (id: number) => Promise<boolean>;
+};
 
 const nextId = (items: Array<{ id: number }>) => Math.max(0, ...items.map((item) => item.id)) + 1;
 
-export function CourseManagement({ data, update }: Props) {
+export function CourseManagement({ data, update, saveCourse: persistCourse, deleteCourseById }: Props) {
   const [tab, setTab] = useState<"مادة" | "باقة">("مادة");
   const [courseEditor, setCourseEditor] = useState<Course | null>(null);
   const [enrollmentOpen, setEnrollmentOpen] = useState(false);
@@ -29,17 +34,8 @@ export function CourseManagement({ data, update }: Props) {
   const enrolledCount = (courseId: number) =>
     data.enrollments.filter((enrollment) => enrollment.courseId === courseId && enrollment.status === "نشط").length;
 
-  const saveCourse = (course: Course) => {
-    const normalized = {
-      ...course,
-      levelId: course.levelIds?.[0] ?? null,
-      level: data.levels.find((level) => level.id === course.levelIds?.[0]) ?? null,
-    };
-    const courses = course.id
-      ? data.courses.map((item) => (item.id === course.id ? normalized : item))
-      : [...data.courses, { ...normalized, id: nextId(data.courses) }];
-    update({ ...data, courses }, "تم حفظ المادة أو الباقة");
-    setCourseEditor(null);
+  const saveCourse = async (course: Course) => {
+    if (await persistCourse(course)) setCourseEditor(null);
   };
 
   return (
@@ -142,9 +138,8 @@ export function CourseManagement({ data, update }: Props) {
           title="تأكيد حذف المادة أو الباقة"
           message={`هل أنت متأكد من حذف ${deleteCourse.name}؟ سيتم حذف التسجيلات المرتبطة بها أيضاً.`}
           onCancel={() => setDeleteCourse(null)}
-          onConfirm={() => {
-            update({ ...data, courses: data.courses.filter((item) => item.id !== deleteCourse.id), enrollments: data.enrollments.filter((item) => item.courseId !== deleteCourse.id) }, "تم حذف الدورة والتسجيلات المرتبطة");
-            setDeleteCourse(null);
+          onConfirm={async () => {
+            if (await deleteCourseById(deleteCourse.id)) setDeleteCourse(null);
           }}
         />
       )}

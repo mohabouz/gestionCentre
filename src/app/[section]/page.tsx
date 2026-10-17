@@ -27,6 +27,10 @@ export default function SectionPage() {
     deleteStudent,
     createExpense,
     deleteExpense,
+    saveTeacher,
+    deleteTeacher,
+    saveCourse,
+    deleteCourse,
     toast,
   } = useSectionData();
   const { user } = useAuth();
@@ -55,7 +59,12 @@ export default function SectionPage() {
   ) : section === "students" ? (
     <Students data={data} update={update} deleteStudent={deleteStudent} />
   ) : section === "teachers" ? (
-    <Teachers data={data} update={update} />
+    <Teachers
+      data={data}
+      update={update}
+      saveTeacher={saveTeacher}
+      deleteTeacher={deleteTeacher}
+    />
   ) : section === "courses" ? (
     <CourseManagement
       data={{
@@ -66,6 +75,8 @@ export default function SectionPage() {
         enrollments: data.enrollments,
       }}
       update={(next, message) => update({ ...data, ...next }, message)}
+      saveCourse={saveCourse}
+      deleteCourseById={deleteCourse}
     />
   ) : section === "levels" ? (
     <LevelManagement

@@ -9,7 +9,7 @@ import { Teacher } from "@/lib/centman-store";
 import { Actions, Input, Modal, Table, Td, Th } from "@/components/sections/shared-ui";
 import type { Props } from "@/components/sections/types";
 
-export function Teachers({ data, update }: Props) {
+export function Teachers({ data, saveTeacher, deleteTeacher }: Props) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Teacher | null>(null);
   const [form, setForm] = useState({
@@ -17,26 +17,15 @@ export function Teachers({ data, update }: Props) {
     specialty: "",
     commission: "60",
   });
-  const save = (e: FormEvent) => {
+  const save = async (e: FormEvent) => {
     e.preventDefault();
-    const teacher: Teacher = {
-      id: editing?.id || Date.now(),
+    const saved = await saveTeacher?.({
+      id: editing?.id,
       name: form.name,
       specialty: form.specialty,
       commission: Number(form.commission),
-      students: editing?.students || 0,
-      sessions: editing?.sessions || 0,
-    };
-    update(
-      {
-        ...data,
-        teachers: editing
-          ? data.teachers.map((t) => (t.id === editing.id ? teacher : t))
-          : [...data.teachers, teacher],
-      },
-      "تم حفظ الأستاذ",
-    );
-    setOpen(false);
+    });
+    if (saved) setOpen(false);
   };
   return (
     <>
@@ -84,15 +73,7 @@ export function Teachers({ data, update }: Props) {
                     });
                     setOpen(true);
                   }}
-                  onDelete={() =>
-                    update(
-                      {
-                        ...data,
-                        teachers: data.teachers.filter((x) => x.id !== t.id),
-                      },
-                      "تم حذف الأستاذ",
-                    )
-                  }
+                  onDelete={() => deleteTeacher?.(t.id)}
                 />
               </Td>
             </tr>

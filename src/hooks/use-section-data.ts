@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { initial, type Data } from "@/lib/section-data";
 import { refreshDraftPayouts } from "@/lib/payroll";
-import type { Expense } from "@/lib/centman-store";
+import type { Course, Expense, Teacher } from "@/lib/centman-store";
 
 export function useSectionData() {
   const [data, setData] = useState<Data>(initial);
@@ -165,12 +165,138 @@ export function useSectionData() {
     window.setTimeout(() => setToast(""), 2200);
   };
 
+  const saveTeacher = async (
+    teacher: Pick<Teacher, "name" | "specialty" | "commission"> & { id?: number },
+  ) => {
+    try {
+      const response = await fetch(
+        teacher.id ? `/api/teachers/${teacher.id}` : "/api/teachers",
+        {
+          method: teacher.id ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(teacher),
+        },
+      );
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+
+      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      if (!refreshed.ok) throw new Error("database");
+      stateVersion.current = refreshed.headers.get("etag");
+      setData({ ...initial, ...(await refreshed.json()) });
+      setToast("تم حفظ الأستاذ");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(
+        error instanceof Error && error.message !== "database"
+          ? error.message
+          : "تعذر حفظ الأستاذ",
+      );
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
+  const deleteTeacher = async (id: number) => {
+    const previous = data;
+    setData({
+      ...data,
+      teachers: data.teachers.filter((teacher) => teacher.id !== id),
+    });
+    try {
+      const response = await fetch(`/api/teachers/${id}`, {
+        method: "DELETE",
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const details = await response.json().catch(() => null);
+        throw new Error(details?.error || "database");
+      }
+      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      if (!refreshed.ok) throw new Error("database");
+      stateVersion.current = refreshed.headers.get("etag");
+      setData({ ...initial, ...(await refreshed.json()) });
+      setToast("تم حذف الأستاذ");
+    } catch (error) {
+      setData(previous);
+      setToast(
+        error instanceof Error && error.message !== "database"
+          ? error.message
+          : "تعذر حذف الأستاذ",
+      );
+    }
+    window.setTimeout(() => setToast(""), 2200);
+  };
+
+  const saveCourse = async (course: Course) => {
+    try {
+      const response = await fetch(
+        course.id ? `/api/courses/${course.id}` : "/api/courses",
+        {
+          method: course.id ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(course),
+        },
+      );
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      if (!refreshed.ok) throw new Error("database");
+      stateVersion.current = refreshed.headers.get("etag");
+      setData({ ...initial, ...(await refreshed.json()) });
+      setToast("تم حفظ المادة أو الباقة");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(
+        error instanceof Error && error.message !== "database"
+          ? error.message
+          : "تعذر حفظ المادة أو الباقة",
+      );
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
+  const deleteCourse = async (id: number) => {
+    try {
+      const response = await fetch(`/api/courses/${id}`, {
+        method: "DELETE",
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const details = await response.json().catch(() => null);
+        throw new Error(details?.error || "database");
+      }
+      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      if (!refreshed.ok) throw new Error("database");
+      stateVersion.current = refreshed.headers.get("etag");
+      setData({ ...initial, ...(await refreshed.json()) });
+      setToast("تم حذف المادة أو الباقة والتسجيلات المرتبطة");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(
+        error instanceof Error && error.message !== "database"
+          ? error.message
+          : "تعذر حذف المادة أو الباقة",
+      );
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
   return {
     data,
     update,
     deleteStudent,
     createExpense,
     deleteExpense,
+    saveTeacher,
+    deleteTeacher,
+    saveCourse,
+    deleteCourse,
     toast,
   };
 }
