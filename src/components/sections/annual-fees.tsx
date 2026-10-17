@@ -108,9 +108,9 @@ export function AnnualFees({ data, update }: Props) {
         <PaymentRegisterModal
           payment={registering}
           onClose={() => setRegistering(null)}
-          onSave={(amount, method) => {
+          onSave={(amount) => {
             update(
-              registerPaymentCollection(data, registering, amount, method),
+              registerPaymentCollection(data, registering, amount),
               "تم تسجيل دفعة الاشتراك السنوي",
             );
             setRegistering(null);

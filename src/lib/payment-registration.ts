@@ -6,7 +6,6 @@ export function registerPaymentCollection(
   data: Data,
   payment: Payment,
   amount: number,
-  method: NonNullable<Payment["method"]>,
 ): Data {
   const remaining = remainingPaymentAmount(payment);
   const paidNow = Math.max(0, Math.min(amount, remaining));
@@ -26,7 +25,6 @@ export function registerPaymentCollection(
     totalAmount,
     status: nextAmount >= totalAmount ? "مدفوع" : "جزئي",
     date: today,
-    method,
     receiptNumber,
   };
   const payments = paymentExists
@@ -37,7 +35,6 @@ export function registerPaymentCollection(
     paymentId,
     amount: paidNow,
     date: updatedPayment.date,
-    method,
     receiptNumber,
   }];
 

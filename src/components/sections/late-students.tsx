@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, MessageCircle, Phone } from "lucide-react";
 import { Button, Card, PageTitle } from "@/components/centman-shell";
-import { Payment, PaymentCollection, Student, money, today } from "@/lib/centman-store";
+import { PaymentCollection, Student, money, today } from "@/lib/centman-store";
 import { paymentBillingMonth, remainingPaymentAmount } from "@/lib/monthly-billing";
 
 
@@ -35,7 +35,7 @@ export function LateStudents({ data, update }: Props) {
     setPayingStudent(student);
     router.replace("/late-students", { scroll: false });
   }, [data.students, router, searchParams]);
-  const registerPartialPayment = (student: Student, requestedAmount: number, method: NonNullable<Payment["method"]>) => {
+  const registerPartialPayment = (student: Student, requestedAmount: number) => {
     const invoices = outstandingPayments(student.id);
     const totalDue = invoices.reduce((sum, payment) => sum + remainingPaymentAmount(payment), 0);
     const paidNow = Math.max(0, Math.min(requestedAmount, totalDue));
@@ -56,7 +56,6 @@ export function LateStudents({ data, update }: Props) {
         paymentId: payment.id,
         amount: applied,
         date: today,
-        method,
         receiptNumber,
       });
       collectionIndex += 1;
@@ -65,7 +64,6 @@ export function LateStudents({ data, update }: Props) {
         amount: nextAmount,
         status: nextAmount >= totalAmount ? ("مدفوع" as const) : ("جزئي" as const),
         date: today,
-        method,
         receiptNumber,
       };
     });
@@ -179,7 +177,7 @@ export function LateStudents({ data, update }: Props) {
           enrollments={data.enrollments}
           levels={data.levels}
           onClose={() => setPayingStudent(null)}
-          onSave={(amount, method) => registerPartialPayment(payingStudent, amount, method)}
+          onSave={(amount) => registerPartialPayment(payingStudent, amount)}
         />
       )}
     </>

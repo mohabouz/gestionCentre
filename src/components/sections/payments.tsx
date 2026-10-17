@@ -74,11 +74,11 @@ export function Payments({ data, update, registerPayment, monthly }: Props & { m
       `تم توليد ${generated.length} دفعة لشهر ${formatBillingMonth(selectedMonth)}`,
     );
   };
-  const record = async (payment: Payment, amount: number, method: NonNullable<Payment["method"]>) => {
+  const record = async (payment: Payment, amount: number) => {
     const remaining = remainingPaymentAmount(payment);
     const paidNow = Math.max(0, Math.min(amount, remaining));
     if (!paidNow) return;
-    if (await registerPayment?.(payment.id, paidNow, method)) {
+    if (await registerPayment?.(payment.id, paidNow)) {
       setRegisteringPayment(null);
     }
   };
@@ -345,7 +345,6 @@ export function Payments({ data, update, registerPayment, monthly }: Props & { m
           <Th>المدفوع</Th>
           <Th>المتبقي</Th>
           <Th>الحالة</Th>
-          <Th>طريقة الدفع</Th>
           <Th>إجراء</Th>
           {monthly && monthlyGroups.map((group) => {
             const paid = group.payments.reduce(
@@ -356,9 +355,6 @@ export function Payments({ data, update, registerPayment, monthly }: Props & { m
               (sum, payment) => sum + remainingPaymentAmount(payment),
               0,
             );
-            const methods = Array.from(
-              new Set(group.payments.map((payment) => payment.method).filter(Boolean)),
-            ).join("، ");
             const expanded = expandedStudentId === group.studentId;
             return (
               <Fragment key={group.studentId}>
@@ -388,7 +384,6 @@ export function Payments({ data, update, registerPayment, monthly }: Props & { m
                     {remaining === 0 ? "مدفوع" : paid > 0 ? "جزئي" : "غير مدفوع"}
                   </span>
                 </Td>
-                <Td>{methods || "-"}</Td>
                 <Td>
                   {remaining > 0 ? (
                     <Button onClick={() => setRegisteringStudentPayments(group.payments.filter((payment) => remainingPaymentAmount(payment) > 0))}>
@@ -400,7 +395,7 @@ export function Payments({ data, update, registerPayment, monthly }: Props & { m
                 </Td>
               </tr>
               <tr>
-                <td colSpan={7} className="border-0 bg-[#f7faf8] p-0">
+                <td colSpan={6} className="border-0 bg-[#f7faf8] p-0">
                   <div
                     className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
                   >
@@ -467,7 +462,6 @@ export function Payments({ data, update, registerPayment, monthly }: Props & { m
                   {p.status}
                 </span>
               </Td>
-              <Td>{p.method || "-"}</Td>
               <Td>
                 {p.status === "مدفوع" ? (
                   <div className="flex items-center gap-2">
@@ -523,7 +517,7 @@ export function Payments({ data, update, registerPayment, monthly }: Props & { m
         <PaymentRegisterModal
           payment={registeringPayment}
           onClose={() => setRegisteringPayment(null)}
-          onSave={(amount, method) => void record(registeringPayment, amount, method)}
+          onSave={(amount) => void record(registeringPayment, amount)}
         />
       )}
       {registeringStudentPayments && (
@@ -532,12 +526,12 @@ export function Payments({ data, update, registerPayment, monthly }: Props & { m
           courses={data.courses}
           levels={data.levels}
           onClose={() => setRegisteringStudentPayments(null)}
-          onSave={(amounts, method) => {
+          onSave={(amounts) => {
             let next = data;
             for (const payment of registeringStudentPayments) {
               const amount = amounts[payment.id] || 0;
               if (amount > 0) {
-                next = registerPaymentCollection(next, payment, amount, method);
+                next = registerPaymentCollection(next, payment, amount);
               }
             }
             update(next, "تم تسجيل دفعات التلميذ");

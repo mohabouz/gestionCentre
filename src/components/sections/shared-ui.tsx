@@ -71,15 +71,12 @@ export function Table({ children }: { children: React.ReactNode }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const items = Children.toArray(children);
-  const headerItems: React.ReactNode[] = [];
-  let rowStart = 0;
-  while (rowStart < items.length) {
-    const item = items[rowStart];
-    if (!isValidElement(item) || item.type !== Th) break;
-    headerItems.push(item);
-    rowStart += 1;
-  }
-  const rows = items.slice(rowStart);
+  const headerItems = items.filter(
+    (item) => isValidElement(item) && item.type === Th,
+  );
+  const rows = items.filter(
+    (item) => !isValidElement(item) || item.type !== Th,
+  );
   const rowSignature = rows
     .map((row, index) =>
       isValidElement(row) && row.key != null ? String(row.key) : String(index),
@@ -235,7 +232,7 @@ export function ReceiptActions({
     const receipt = window.open("", "_blank", "width=480,height=640");
     if (!receipt) return;
     receipt.document.write(
-      `<html dir="rtl"><head><title>وصل ${payment.receiptNumber || "الدفع"}</title><style>body{font-family:Tahoma,sans-serif;padding:32px;color:#292929}h1{color:#5054c0}hr{border:0;border-top:1px solid #e5e5e5;margin:24px 0}.row{display:flex;justify-content:space-between;padding:10px 0}</style></head><body><h1>CentMan</h1><p>وصل أداء مالي</p><hr/><div class="row"><b>الطالب</b><span>${payment.student}</span></div><div class="row"><b>الشهر</b><span>${payment.month}</span></div><div class="row"><b>المبلغ</b><span>${money(payment.amount)}</span></div><div class="row"><b>طريقة الدفع</b><span>${payment.method || "غير محددة"}</span></div><div class="row"><b>رقم الوصل</b><span>${payment.receiptNumber || "غير متوفر"}</span></div><div class="row"><b>التاريخ</b><span>${payment.date}</span></div><hr/><p>شكراً لثقتكم بمركز CentMan</p><script>window.print();</script></body></html>`,
+      `<html dir="rtl"><head><title>وصل ${payment.receiptNumber || "الدفع"}</title><style>body{font-family:Tahoma,sans-serif;padding:32px;color:#292929}h1{color:#5054c0}hr{border:0;border-top:1px solid #e5e5e5;margin:24px 0}.row{display:flex;justify-content:space-between;padding:10px 0}</style></head><body><h1>CentMan</h1><p>وصل أداء مالي</p><hr/><div class="row"><b>الطالب</b><span>${payment.student}</span></div><div class="row"><b>الشهر</b><span>${payment.month}</span></div><div class="row"><b>المبلغ</b><span>${money(payment.amount)}</span></div><div class="row"><b>رقم الوصل</b><span>${payment.receiptNumber || "غير متوفر"}</span></div><div class="row"><b>التاريخ</b><span>${payment.date}</span></div><hr/><p>شكراً لثقتكم بمركز CentMan</p><script>window.print();</script></body></html>`,
     );
     receipt.document.close();
   };

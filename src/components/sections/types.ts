@@ -4,7 +4,6 @@ import type { Data } from "@/lib/section-data";
 import type {
   Attendance as AttendanceRecord,
   Expense,
-  Payment,
   Room,
   Session,
   Teacher,
@@ -34,6 +33,5 @@ export type Props = {
   registerPayment?: (
     paymentId: number,
     amount: number,
-    method: NonNullable<Payment["method"]>,
   ) => Promise<boolean>;
 };

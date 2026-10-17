@@ -29,18 +29,13 @@ export function MonthlyStudentPaymentModal({
   courses: Course[];
   levels: Level[];
   onClose: () => void;
-  onSave: (
-    amounts: Record<number, number>,
-    method: NonNullable<Payment["method"]>,
-  ) => void;
+  onSave: (amounts: Record<number, number>) => void;
 }) {
   const [amounts, setAmounts] = useState<Record<number, number>>(() =>
     Object.fromEntries(
       payments.map((payment) => [payment.id, remainingPaymentAmount(payment)]),
     ),
   );
-  const [method, setMethod] =
-    useState<NonNullable<Payment["method"]>>("نقدي");
   const totalDue = payments.reduce(
     (sum, payment) => sum + remainingPaymentAmount(payment),
     0,
@@ -64,7 +59,7 @@ export function MonthlyStudentPaymentModal({
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
-          onSave(amounts, method);
+          onSave(amounts);
         }}
       >
         <div className="grid grid-cols-3 gap-2 text-center">
@@ -122,23 +117,6 @@ export function MonthlyStudentPaymentModal({
             );
           })}
         </div>
-
-        <label className="block text-right">
-          <span className="mb-2 block text-xs font-bold text-[#6c6c6c]">
-            طريقة الدفع
-          </span>
-          <select
-            value={method}
-            onChange={(event) =>
-              setMethod(event.target.value as NonNullable<Payment["method"]>)
-            }
-            className="w-full rounded-xl border border-[#e5e5e5] bg-[#f7f7f7] px-3 py-2.5 text-sm outline-none focus:border-[#5054c0]"
-          >
-            <option value="نقدي">نقدي</option>
-            <option value="تحويل بنكي">تحويل بنكي</option>
-            <option value="بطاقة">بطاقة</option>
-          </select>
-        </label>
 
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>إلغاء</Button>

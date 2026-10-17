@@ -354,8 +354,8 @@ export function Students({ data, update, deleteStudent, registerPayment }: Props
         <PaymentRegisterModal
           payment={registeringPayment}
           onClose={() => setRegisteringPayment(null)}
-          onSave={async (amount, method) => {
-            if (await registerPayment?.(registeringPayment.id, amount, method)) {
+          onSave={async (amount) => {
+            if (await registerPayment?.(registeringPayment.id, amount)) {
               setRegisteringPayment(null);
             }
           }}

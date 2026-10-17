@@ -3,8 +3,6 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const methods = new Set(["نقدي", "تحويل بنكي", "بطاقة"]);
-
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     await requireUser();
@@ -12,9 +10,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const paymentId = Number(value);
     const body = await request.json().catch(() => null);
     const requestedAmount = Number(body?.amount);
-    const method = String(body?.method || "");
     const date = String(body?.date || "");
-    if (!Number.isInteger(paymentId) || paymentId <= 0 || !Number.isInteger(requestedAmount) || requestedAmount <= 0 || !methods.has(method) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    if (!Number.isInteger(paymentId) || paymentId <= 0 || !Number.isInteger(requestedAmount) || requestedAmount <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return NextResponse.json({ error: "Invalid payment information" }, { status: 400 });
     }
 
@@ -28,8 +25,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       if (!amount) return null;
       const nextAmount = recorded + amount;
       const receiptNumber = `REC-${date.replaceAll("-", "")}-${paymentId}-${randomUUID().slice(0, 8)}`;
-      await tx.paymentCollection.create({ data: { paymentId, amount, date, method, receiptNumber } });
-      await tx.payment.update({ where: { id: paymentId }, data: { amount: nextAmount, totalAmount: total, status: nextAmount >= total ? "مدفوع" : "جزئي", date, method, receiptNumber } });
+      await tx.paymentCollection.create({ data: { paymentId, amount, date, receiptNumber } });
+      await tx.payment.update({ where: { id: paymentId }, data: { amount: nextAmount, totalAmount: total, status: nextAmount >= total ? "مدفوع" : "جزئي", date, method: null, receiptNumber } });
       const studentPayments = await tx.payment.findMany({ where: { studentId: payment.studentId, status: { not: "ملغاة" } } });
       const due = studentPayments.reduce((sum, item) => {
         const paid = item.totalAmount == null && (item.status === "متأخر" || item.status === "مسودة") ? 0 : item.amount;

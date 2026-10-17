@@ -73,7 +73,7 @@ export function StudentHistory({
               className="flex items-center justify-between rounded-xl border border-[#e5e5e5] p-4"
             >
               <span>
-                {payment.month} • {payment.method || "طريقة غير محددة"}
+                {payment.month}
               </span>
               <b
                 className={

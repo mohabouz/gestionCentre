@@ -15,16 +15,15 @@ export function PaymentRegisterModal({
 }: {
   payment: Payment;
   onClose: () => void;
-  onSave: (amount: number, method: NonNullable<Payment["method"]>) => void;
+  onSave: (amount: number) => void;
 }) {
   const remainingDue = remainingPaymentAmount(payment);
   const [amount, setAmount] = useState(String(remainingDue));
-  const [method, setMethod] = useState<NonNullable<Payment["method"]>>(payment.method || "نقدي");
   const paidNow = Math.max(0, Math.min(Number(amount) || 0, remainingDue));
   const leftAfterPayment = remainingDue - paidNow;
   return (
     <Modal title={`تسجيل دفعة: ${payment.student}`} onClose={onClose}>
-      <form onSubmit={(event) => { event.preventDefault(); onSave(paidNow, method); }} className="space-y-4">
+      <form onSubmit={(event) => { event.preventDefault(); onSave(paidNow); }} className="space-y-4">
         <div className="rounded-xl bg-[#f5f7ff] p-3 text-xs text-[#5054c0]">
           <p className="font-black">{payment.month}</p>
           <p className="mt-1">الإجمالي: {money(payment.totalAmount ?? payment.amount)} • سبق دفعه: {money(recordedPaymentAmount(payment))}</p>
@@ -34,10 +33,7 @@ export function PaymentRegisterModal({
           <div className="rounded-xl bg-[#eef4ff] p-3"><span className="block text-[10px] text-[#8a8a8a]">المدفوع الآن</span><b className="mt-1 block text-sm text-[#5054c0]">{money(paidNow)}</b></div>
           <div className="rounded-xl bg-[#faf4de] p-3"><span className="block text-[10px] text-[#8a8a8a]">سيبقى</span><b className="mt-1 block text-sm text-[#a08500]">{money(leftAfterPayment)}</b></div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Input label={`مبلغ الدفعة (الحد الأقصى ${money(remainingDue)})`} type="number" value={amount} onChange={setAmount} />
-          <label className="block text-right"><span className="mb-2 block text-xs font-bold text-[#6c6c6c]">طريقة الدفع</span><select value={method} onChange={(event) => setMethod(event.target.value as NonNullable<Payment["method"]>)} className="w-full rounded-xl border border-[#e5e5e5] bg-[#f7f7f7] px-3 py-2.5 text-sm outline-none focus:border-[#5054c0]"><option value="نقدي">نقدي</option><option value="تحويل بنكي">تحويل بنكي</option><option value="بطاقة">بطاقة</option></select></label>
-        </div>
+        <Input label={`مبلغ الدفعة (الحد الأقصى ${money(remainingDue)})`} type="number" value={amount} onChange={setAmount} />
         <p className={`rounded-xl p-3 text-center text-xs font-bold ${leftAfterPayment > 0 ? "bg-[#faf4de] text-[#8a7000]" : "bg-[#e6f5ee] text-[#008a55]"}`}>
           {leftAfterPayment > 0 ? `ستبقى الفاتورة جزئية وبها ${money(leftAfterPayment)} غير مدفوعة` : "سيتم إغلاق الفاتورة بالكامل"}
         </p>

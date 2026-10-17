@@ -414,13 +414,12 @@ export function useSectionData() {
   const registerPayment = async (
     paymentId: number,
     amount: number,
-    method: NonNullable<import("@/lib/centman-store").Payment["method"]>,
   ) => {
     try {
       const response = await fetch(`/api/payments/${paymentId}/collections`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, method, date: today }),
+        body: JSON.stringify({ amount, date: today }),
       });
       const result = await response.json().catch(() => null);
       if (!response.ok) throw new Error(result?.error || "database");
