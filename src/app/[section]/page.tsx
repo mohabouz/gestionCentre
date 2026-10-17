@@ -57,6 +57,7 @@ import { CourseManagement } from "@/components/course-management";
 import { LevelManagement } from "@/components/level-management";
 import { AppLanguage, useLanguage } from "@/components/language-provider";
 import { useAuth } from "@/components/auth-provider";
+import { hasSessionConflict, snapByCoverage } from "@/lib/timetable";
 
 type Data = {
   students: Student[];
@@ -2698,6 +2699,7 @@ function SpreadsheetTimetable({ data, update }: Props) {
     index: number;
     duration: number;
   } | null>(null);
+  const [scheduleError, setScheduleError] = useState("");
   const [roomForm, setRoomForm] = useState("");
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [form, setForm] = useState({
@@ -2721,14 +2723,47 @@ function SpreadsheetTimetable({ data, update }: Props) {
     nextStartIndex: number;
     nextEndIndex: number;
   } | null>(null);
+  const dragRef = useRef<{ sessionId: number; grabOffset: number } | null>(null);
   const indexOf = (value: string) => {
     const [hour, minute] = value.split(":").map(Number);
     return Math.max(0, Math.round((hour * 60 + minute - 480) / 30));
   };
-  const timeAt = (index: number) =>
-    slots[Math.max(0, Math.min(slots.length - 1, index))];
+  const timeAt = (index: number) => {
+    const bounded = Math.max(0, Math.min(slots.length, index));
+    const totalMinutes = 480 + bounded * 30;
+    return `${String(Math.floor(totalMinutes / 60)).padStart(2, "0")}:${String(totalMinutes % 60).padStart(2, "0")}`;
+  };
+  const teacherPalette = [
+    ["#2563eb", "#dbeafe"],
+    ["#7c3aed", "#ede9fe"],
+    ["#059669", "#d1fae5"],
+    ["#db2777", "#fce7f3"],
+    ["#d97706", "#fef3c7"],
+    ["#0891b2", "#cffafe"],
+    ["#dc2626", "#fee2e2"],
+    ["#4f46e5", "#e0e7ff"],
+  ] as const;
+  const teacherColors = (teacher: string) => {
+    const teacherIndex = data.teachers.findIndex((item) => item.name === teacher);
+    const fallback = [...teacher].reduce((sum, character) => sum + character.charCodeAt(0), 0);
+    return teacherPalette[(teacherIndex >= 0 ? teacherIndex : fallback) % teacherPalette.length];
+  };
+  const conflicts = (sessionId: number, weekday: string, room: string, startIndex: number, endIndex: number, teacher?: string) => {
+    const moving = data.sessions.find((session) => session.id === sessionId);
+    const movingTeacher = teacher || moving?.teacher;
+    return hasSessionConflict({ sessions: data.sessions, sessionId, weekday, room, teacher: movingTeacher, startIndex, endIndex, indexOf });
+  };
+  const previewInvalid = dragPreview
+    ? conflicts(dragPreview.sessionId, dragPreview.weekday, dragPreview.room, dragPreview.index, dragPreview.index + dragPreview.duration)
+    : false;
   const save = (event: FormEvent) => {
     event.preventDefault();
+    const sessionId = editingSession?.id ?? -1;
+    if (conflicts(sessionId, form.weekday, form.room, indexOf(form.time), indexOf(form.endTime), form.teacher)) {
+      setScheduleError("لا يمكن حفظ الحصة فوق حصة أخرى أو في وقت يكون فيه الأستاذ مشغولاً.");
+      return;
+    }
+    setScheduleError("");
     const sessions = editingSession
       ? data.sessions.map((session) =>
         session.id === editingSession.id
@@ -2787,9 +2822,8 @@ function SpreadsheetTimetable({ data, update }: Props) {
   const moveResize = (event: React.PointerEvent<HTMLButtonElement>) => {
     const resize = resizeRef.current;
     if (!resize) return;
-    const visualDelta = Math.round(
-      (event.clientX - resize.startX) / resize.slotWidth,
-    );
+    const rawDelta = (event.clientX - resize.startX) / resize.slotWidth;
+    const visualDelta = Math.sign(rawDelta) * snapByCoverage(Math.abs(rawDelta));
     const delta = resize.direction === "rtl" ? -visualDelta : visualDelta;
     if (resize.edge === "right") {
       resize.nextStartIndex = Math.max(
@@ -2814,6 +2848,15 @@ function SpreadsheetTimetable({ data, update }: Props) {
     if (!resize) return;
     const nextStartIndex = resize.nextStartIndex;
     const nextEndIndex = resize.nextEndIndex;
+    const resizedSession = data.sessions.find((session) => session.id === resize.sessionId);
+    if (!resizedSession || conflicts(resize.sessionId, resizedSession.weekday || "الاثنين", resizedSession.room, nextStartIndex, nextEndIndex)) {
+      setScheduleError("لا يمكن وضع الحصة فوق حصة أخرى أو في وقت يكون فيه الأستاذ مشغولاً.");
+      resizeRef.current = null;
+      setResizePreview(null);
+      event.currentTarget.releasePointerCapture(event.pointerId);
+      return;
+    }
+    setScheduleError("");
     update(
       {
         ...data,
@@ -2840,16 +2883,12 @@ function SpreadsheetTimetable({ data, update }: Props) {
     span: number,
   ) => {
     const rect = cell.getBoundingClientRect();
-    const visualIndex = Math.max(
-      0,
-      Math.min(
-        span - 1,
-        Math.floor(((event.clientX - rect.left) / rect.width) * span),
-      ),
-    );
-    return getComputedStyle(cell).direction === "rtl"
-      ? startIndex + span - 1 - visualIndex
-      : startIndex + visualIndex;
+    const visualPosition = Math.max(0, Math.min(span, ((event.clientX - rect.left) / rect.width) * span));
+    const pointerIndex = getComputedStyle(cell).direction === "rtl"
+      ? startIndex + span - visualPosition
+      : startIndex + visualPosition;
+    const grabOffset = dragRef.current?.grabOffset || 0;
+    return Math.max(0, Math.min(slots.length - 1, snapByCoverage(pointerIndex - grabOffset)));
   };
   const move = (
     session: Session,
@@ -2861,6 +2900,12 @@ function SpreadsheetTimetable({ data, update }: Props) {
       1,
       indexOf(session.endTime || "17:00") - indexOf(session.time),
     );
+    const boundedIndex = Math.min(index, slots.length - duration);
+    if (conflicts(session.id, weekday, room, boundedIndex, boundedIndex + duration)) {
+      setScheduleError("لا يمكن وضع الحصة فوق حصة أخرى أو في وقت يكون فيه الأستاذ مشغولاً.");
+      return;
+    }
+    setScheduleError("");
     update(
       {
         ...data,
@@ -2870,8 +2915,8 @@ function SpreadsheetTimetable({ data, update }: Props) {
               ...item,
               weekday,
               room,
-              time: timeAt(index),
-              endTime: timeAt(index + duration),
+              time: timeAt(boundedIndex),
+              endTime: timeAt(boundedIndex + duration),
             }
             : item,
         ),
@@ -2951,9 +2996,14 @@ function SpreadsheetTimetable({ data, update }: Props) {
         <p className="mb-4 text-xs text-[#84938b]">
           هذا الجدول أسبوعي متكرر؛ يتم تحديد التاريخ فقط عند تسجيل الحضور.
         </p>
-        <div className="overflow-x-auto">
+        {scheduleError && (
+          <div className="mb-4 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-xs font-bold text-[#b91c1c]">
+            {scheduleError}
+          </div>
+        )}
+        <div className="max-h-[70vh] overflow-auto rounded-xl border border-[#e5e5e5]">
           <table className="w-max min-w-[1500px] table-fixed border-collapse text-right text-[10px]">
-            <thead>
+            <thead className="sticky top-0 z-30 shadow-sm">
               <tr>
                 <th className="sticky right-0 z-20 w-[70px] min-w-[70px] whitespace-nowrap border border-[#e5e5e5] bg-[#fafafa] p-3">
                   اليوم
@@ -2964,7 +3014,7 @@ function SpreadsheetTimetable({ data, update }: Props) {
                 {slots.map((slot) => (
                   <th
                     key={slot}
-                    className="min-w-[42px] border border-[#e5e5e5] bg-[#fafafa] p-2 text-center"
+                    className="sticky top-0 min-w-[42px] border border-[#e5e5e5] bg-[#fafafa] p-2 text-center"
                   >
                     {slot}
                   </th>
@@ -2987,6 +3037,7 @@ function SpreadsheetTimetable({ data, update }: Props) {
                     );
                     if (session) {
                       const sessionStartIndex = index;
+                      const [teacherColor, teacherTint] = teacherColors(session.teacher);
                       const span = Math.max(
                         1,
                         Math.min(
@@ -3047,12 +3098,14 @@ function SpreadsheetTimetable({ data, update }: Props) {
                             }
                             setDragPreview(null);
                           }}
-                          className={`relative h-12 border border-[#e5e5e5] bg-[#5054c0] p-1 text-white ${dragPreview &&
+                          className={`relative h-12 border border-[#e5e5e5] bg-white p-1 ${dragPreview &&
                             dragPreview.weekday === weekday &&
                             dragPreview.room === room.name &&
                             dragPreview.index < sessionStartIndex + span &&
                             dragPreview.index + dragPreview.duration > sessionStartIndex
-                            ? "bg-[#f59e0b]/20 outline outline-2 outline-dashed outline-[#f59e0b] outline-offset-[-2px]"
+                            ? previewInvalid
+                              ? "outline outline-2 outline-dashed outline-[#dc2626] outline-offset-[-2px]"
+                              : "outline outline-2 outline-dashed outline-[#00a060] outline-offset-[-2px]"
                             : ""
                             }`}
                         >
@@ -3064,10 +3117,15 @@ function SpreadsheetTimetable({ data, update }: Props) {
                                 String(session.id),
                               );
                               setDragPreview(null);
+                              const rect = event.currentTarget.getBoundingClientRect();
+                              const visualRatio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+                              const logicalRatio = getComputedStyle(event.currentTarget).direction === "rtl" ? 1 - visualRatio : visualRatio;
+                              dragRef.current = { sessionId: session.id, grabOffset: logicalRatio * span };
                             }}
-                            onDragEnd={() => setDragPreview(null)}
+                            onDragEnd={() => { setDragPreview(null); dragRef.current = null; }}
                             onDoubleClick={() => editSession(session)}
-                            className="relative h-full cursor-grab rounded-md px-2 py-1 font-bold"
+                            className="relative h-full cursor-grab rounded-xl border px-2 py-1 font-bold shadow-sm"
+                            style={{ backgroundColor: teacherTint, borderColor: teacherColor, color: teacherColor }}
                           >
                             <button
                               type="button"
@@ -3141,7 +3199,7 @@ function SpreadsheetTimetable({ data, update }: Props) {
                                   sessionId: draggedSession.id,
                                   weekday,
                                   room: room.name,
-                                  index: slotIndex,
+                                  index: dropIndex(event, event.currentTarget, slotIndex, 1),
                                   duration: Math.max(
                                     1,
                                     indexOf(draggedSession.endTime || "17:00") -
@@ -3158,7 +3216,7 @@ function SpreadsheetTimetable({ data, update }: Props) {
                                 Number(event.dataTransfer.getData("session")),
                             );
                             if (session)
-                              move(session, weekday, room.name, slotIndex);
+                              move(session, weekday, room.name, dropIndex(event, event.currentTarget, slotIndex, 1));
                             setDragPreview(null);
                           }}
                           onClick={() => {
@@ -3175,7 +3233,9 @@ function SpreadsheetTimetable({ data, update }: Props) {
                             dragPreview.room === room.name &&
                             dragPreview.index <= slotIndex &&
                             dragPreview.index + dragPreview.duration > slotIndex
-                            ? "bg-[#f59e0b]/10 outline outline-2 outline-dashed outline-[#f59e0b] outline-offset-[-2px]"
+                            ? previewInvalid
+                              ? "bg-[#fef2f2] outline outline-2 outline-dashed outline-[#dc2626] outline-offset-[-2px]"
+                              : "bg-[#ecfdf5] outline outline-2 outline-dashed outline-[#00a060] outline-offset-[-2px]"
                             : ""
                             }`}
                         />,
