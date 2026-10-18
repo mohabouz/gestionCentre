@@ -4,7 +4,7 @@ import { Fragment, useState } from "react";
 import { ChevronLeft, ChevronUp, Search } from "lucide-react";
 import { Button, Card, PageTitle } from "@/components/centman-shell";
 import { Payment, currentMonth, formatBillingMonth, money, today } from "@/lib/centman-store";
-import { discountedPrice, enrollmentAppliesToMonth, paymentBillingMonth, recordedPaymentAmount, remainingPaymentAmount } from "@/lib/monthly-billing";
+import { paymentBillingMonth, recordedPaymentAmount, remainingPaymentAmount } from "@/lib/monthly-billing";
 import { courseLevelLabel } from "@/lib/course-level";
 import { CoursePicker } from "@/components/course-picker";
 
@@ -16,7 +16,7 @@ import { PaymentRevisionModal } from "@/components/sections/payment-revision-mod
 import { MonthlyStudentPaymentModal } from "@/components/sections/monthly-student-payment-modal";
 
 
-export function Payments({ data, update, registerPayment, registerPayments, monthly }: Props & { monthly: boolean }) {
+export function Payments({ data, update, registerPayment, registerPayments, generateMonthlyPayments: generatePayments, monthly }: Props & { monthly: boolean }) {
   const [query, setQuery] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [courseFilter, setCourseFilter] = useState<number | null>(null);
@@ -25,54 +25,7 @@ export function Payments({ data, update, registerPayment, registerPayments, mont
   const [registeringPayment, setRegisteringPayment] = useState<Payment | null>(null);
   const [registeringStudentPayments, setRegisteringStudentPayments] = useState<Payment[] | null>(null);
   const [expandedStudentId, setExpandedStudentId] = useState<number | null>(null);
-  const generateMonthlyPayments = () => {
-    const eligible = data.enrollments.filter((enrollment) =>
-      enrollmentAppliesToMonth(enrollment, selectedMonth),
-    );
-    const missing = eligible.filter(
-      (enrollment) =>
-        !data.payments.some(
-          (payment) =>
-            Number(payment.enrollmentId) === Number(enrollment.id) &&
-            paymentBillingMonth(payment) === selectedMonth,
-        ),
-    );
-    if (!missing.length) return;
-    const firstId = Math.max(0, ...data.payments.map((payment) => payment.id)) + 1;
-    const generated = missing.flatMap((enrollment, index) => {
-      const student = data.students.find((item) => item.id === enrollment.studentId);
-      const course = data.courses.find((item) => item.id === enrollment.courseId);
-      if (!student || !course) return [];
-      const totalAmount = discountedPrice(course.price, enrollment.discount);
-      return [{
-        id: firstId + index,
-        studentId: student.id,
-        student: student.name,
-        courseId: course.id,
-        enrollmentId: enrollment.id,
-        billingMonth: selectedMonth,
-        amount: 0,
-        totalAmount,
-        month: formatBillingMonth(selectedMonth),
-        status: "مسودة" as const,
-        date: "",
-      }];
-    });
-    const payments = [...data.payments, ...generated];
-    update(
-      {
-        ...data,
-        payments,
-        students: data.students.map((student) => ({
-          ...student,
-          due: payments
-            .filter((payment) => payment.studentId === student.id && payment.status !== "ملغاة")
-            .reduce((sum, payment) => sum + Math.max(0, (payment.totalAmount ?? payment.amount) - payment.amount), 0),
-        })),
-      },
-      `تم توليد ${generated.length} دفعة لشهر ${formatBillingMonth(selectedMonth)}`,
-    );
-  };
+  const generateMonthlyPayments = () => void generatePayments?.(selectedMonth);
   const record = async (payment: Payment, amount: number) => {
     const remaining = remainingPaymentAmount(payment);
     const paidNow = Math.max(0, Math.min(amount, remaining));

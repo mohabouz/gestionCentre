@@ -37,4 +37,5 @@ export type Props = {
   registerPayments?: (
     payments: Array<{ paymentId: number; amount: number }>,
   ) => Promise<boolean>;
+  generateMonthlyPayments?: (month: string) => Promise<boolean>;
 };

@@ -454,6 +454,26 @@ export function useSectionData() {
     }
   };
 
+  const generateMonthlyPayments = async (month: string) => {
+    try {
+      const response = await fetch("/api/payments/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+      await refreshAfterMutation();
+      setToast(result.created ? `تم توليد ${result.created} دفعة` : "دفعات هذا الشهر مولدة مسبقاً");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(error instanceof Error && error.message !== "database" ? error.message : "تعذر توليد الدفعات");
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
   return {
     data,
     update,
@@ -470,6 +490,7 @@ export function useSectionData() {
     saveAttendance,
     registerPayment,
     registerPayments,
+    generateMonthlyPayments,
     toast,
   };
 }
