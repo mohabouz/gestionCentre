@@ -474,6 +474,30 @@ export function useSectionData() {
     }
   };
 
+  const collectAnnualFee = async (
+    studentId: number,
+    year: number,
+    amount: number,
+  ) => {
+    try {
+      const response = await fetch("/api/annual-fees/collect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId, year, amount, date: today }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+      await refreshAfterMutation();
+      setToast(result.partial ? "تم تسجيل دفعة جزئية للاشتراك السنوي" : "تم تسديد الاشتراك السنوي");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(error instanceof Error && error.message !== "database" ? error.message : "تعذر تسجيل الاشتراك السنوي");
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
   return {
     data,
     update,
@@ -491,6 +515,7 @@ export function useSectionData() {
     registerPayment,
     registerPayments,
     generateMonthlyPayments,
+    collectAnnualFee,
     toast,
   };
 }

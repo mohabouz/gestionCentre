@@ -8,9 +8,8 @@ import { EmptyState, Table, Td, Th } from "@/components/sections/shared-ui";
 import type { Props } from "@/components/sections/types";
 import { currentYear, money, type Payment } from "@/lib/centman-store";
 import { recordedPaymentAmount, remainingPaymentAmount } from "@/lib/monthly-billing";
-import { registerPaymentCollection } from "@/lib/payment-registration";
 
-export function AnnualFees({ data, update }: Props) {
+export function AnnualFees({ data, collectAnnualFee }: Props) {
   const [year, setYear] = useState(currentYear);
   const [query, setQuery] = useState("");
   const [registering, setRegistering] = useState<Payment | null>(null);
@@ -108,12 +107,10 @@ export function AnnualFees({ data, update }: Props) {
         <PaymentRegisterModal
           payment={registering}
           onClose={() => setRegistering(null)}
-          onSave={(amount) => {
-            update(
-              registerPaymentCollection(data, registering, amount),
-              "تم تسجيل دفعة الاشتراك السنوي",
-            );
-            setRegistering(null);
+          onSave={async (amount) => {
+            if (await collectAnnualFee?.(registering.studentId, year, amount)) {
+              setRegistering(null);
+            }
           }}
         />
       )}
