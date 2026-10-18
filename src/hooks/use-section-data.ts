@@ -498,6 +498,30 @@ export function useSectionData() {
     }
   };
 
+  const saveStudent = async (
+    student: import("@/lib/centman-store").Student,
+    courseIds: number[],
+    paidAmounts: { annual: number; courses: Record<number, number>; discounts: Record<number, number> },
+  ) => {
+    try {
+      const response = await fetch(student.id ? `/api/students/${student.id}` : "/api/students", {
+        method: student.id ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student, courseIds, paidAmounts, date: today }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+      await refreshAfterMutation();
+      setToast(student.id ? "تم حفظ بيانات التلميذ وتحديث التسجيلات" : "تم حفظ التلميذ وتسجيل الدفعات");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(error instanceof Error && error.message !== "database" ? error.message : "تعذر حفظ التلميذ");
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
   return {
     data,
     update,
@@ -516,6 +540,7 @@ export function useSectionData() {
     registerPayments,
     generateMonthlyPayments,
     collectAnnualFee,
+    saveStudent,
     toast,
   };
 }

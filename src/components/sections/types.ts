@@ -6,6 +6,7 @@ import type {
   Expense,
   Room,
   Session,
+  Student,
   Teacher,
 } from "@/lib/centman-store";
 
@@ -42,5 +43,10 @@ export type Props = {
     studentId: number,
     year: number,
     amount: number,
+  ) => Promise<boolean>;
+  saveStudent?: (
+    student: Student,
+    courseIds: number[],
+    paidAmounts: { annual: number; courses: Record<number, number>; discounts: Record<number, number> },
   ) => Promise<boolean>;
 };

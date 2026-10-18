@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { Button, Card, PageTitle } from "@/components/centman-shell";
-import { Payment, Student, money, today } from "@/lib/centman-store";
-import { discountedPrice, paymentBillingMonth, remainingPaymentAmount } from "@/lib/monthly-billing";
+import { Payment, Student, money } from "@/lib/centman-store";
+import { paymentBillingMonth, remainingPaymentAmount } from "@/lib/monthly-billing";
 
 
 import { Actions, EmptyState, Table, Td, Th } from "@/components/sections/shared-ui";
@@ -14,7 +14,7 @@ import { StudentHistory } from "@/components/sections/student-history";
 import { StudentEnrollmentForm } from "@/components/sections/student-enrollment-form";
 
 
-export function Students({ data, update, deleteStudent, registerPayment }: Props) {
+export function Students({ data, deleteStudent, registerPayment, saveStudent }: Props) {
   const [query, setQuery] = useState("");
   const [enrollmentFilter, setEnrollmentFilter] = useState("all");
   const [editing, setEditing] = useState<Student | null>(null);
@@ -82,7 +82,8 @@ export function Students({ data, update, deleteStudent, registerPayment }: Props
     student: Student,
     courseIds: number[],
     paidAmounts: { annual: number; courses: Record<number, number>; discounts: Record<number, number> },
-  ) => {
+  ) => saveStudent?.(student, courseIds, paidAmounts);
+  /* Legacy full-state registration removed in favor of the focused API transaction.
     const id = student.id || Date.now();
     const existingStudent = data.students.find((item) => item.id === id);
     const active = data.enrollments.filter(
@@ -209,7 +210,7 @@ export function Students({ data, update, deleteStudent, registerPayment }: Props
         ? "تم حفظ بيانات الطالب وتحديث التسجيلات"
         : "تم حفظ الطالب وتسجيل الدفعات",
     );
-  };
+  */
   return (
     <>
       <PageTitle
@@ -330,9 +331,8 @@ export function Students({ data, update, deleteStudent, registerPayment }: Props
           enrollments={data.enrollments}
           subscriptionFee={subscriptionFee}
           onClose={() => setOpen(false)}
-          onSave={(student, courseIds, paidAmounts) => {
-            save(student, courseIds, paidAmounts);
-            setOpen(false);
+          onSave={async (student, courseIds, paidAmounts) => {
+            if (await save(student, courseIds, paidAmounts)) setOpen(false);
           }}
         />
       )}

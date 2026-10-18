@@ -39,6 +39,7 @@ export default function SectionPage() {
     registerPayments,
     generateMonthlyPayments,
     collectAnnualFee,
+    saveStudent,
     toast,
   } = useSectionData();
   const { user } = useAuth();
@@ -65,7 +66,7 @@ export default function SectionPage() {
       </div>
     </Card>
   ) : section === "students" ? (
-    <Students data={data} update={update} deleteStudent={deleteStudent} registerPayment={registerPayment} />
+    <Students data={data} update={update} deleteStudent={deleteStudent} registerPayment={registerPayment} saveStudent={saveStudent} />
   ) : section === "teachers" ? (
     <Teachers
       data={data}
