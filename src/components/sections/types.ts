@@ -34,4 +34,7 @@ export type Props = {
     paymentId: number,
     amount: number,
   ) => Promise<boolean>;
+  registerPayments?: (
+    payments: Array<{ paymentId: number; amount: number }>,
+  ) => Promise<boolean>;
 };

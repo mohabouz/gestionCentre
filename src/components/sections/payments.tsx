@@ -5,7 +5,6 @@ import { ChevronLeft, ChevronUp, Search } from "lucide-react";
 import { Button, Card, PageTitle } from "@/components/centman-shell";
 import { Payment, currentMonth, formatBillingMonth, money, today } from "@/lib/centman-store";
 import { discountedPrice, enrollmentAppliesToMonth, paymentBillingMonth, recordedPaymentAmount, remainingPaymentAmount } from "@/lib/monthly-billing";
-import { registerPaymentCollection } from "@/lib/payment-registration";
 import { courseLevelLabel } from "@/lib/course-level";
 import { CoursePicker } from "@/components/course-picker";
 
@@ -17,7 +16,7 @@ import { PaymentRevisionModal } from "@/components/sections/payment-revision-mod
 import { MonthlyStudentPaymentModal } from "@/components/sections/monthly-student-payment-modal";
 
 
-export function Payments({ data, update, registerPayment, monthly }: Props & { monthly: boolean }) {
+export function Payments({ data, update, registerPayment, registerPayments, monthly }: Props & { monthly: boolean }) {
   const [query, setQuery] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [courseFilter, setCourseFilter] = useState<number | null>(null);
@@ -526,16 +525,14 @@ export function Payments({ data, update, registerPayment, monthly }: Props & { m
           courses={data.courses}
           levels={data.levels}
           onClose={() => setRegisteringStudentPayments(null)}
-          onSave={(amounts) => {
-            let next = data;
-            for (const payment of registeringStudentPayments) {
-              const amount = amounts[payment.id] || 0;
-              if (amount > 0) {
-                next = registerPaymentCollection(next, payment, amount);
-              }
-            }
-            update(next, "تم تسجيل دفعات التلميذ");
-            setRegisteringStudentPayments(null);
+          onSave={async (amounts) => {
+            const saved = await registerPayments?.(
+              registeringStudentPayments.map((payment) => ({
+                paymentId: payment.id,
+                amount: amounts[payment.id] || 0,
+              })),
+            );
+            if (saved) setRegisteringStudentPayments(null);
           }}
         />
       )}

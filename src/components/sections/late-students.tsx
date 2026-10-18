@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, MessageCircle, Phone } from "lucide-react";
 import { Button, Card, PageTitle } from "@/components/centman-shell";
-import { PaymentCollection, Student, money, today } from "@/lib/centman-store";
+import { Student, money } from "@/lib/centman-store";
 import { paymentBillingMonth, remainingPaymentAmount } from "@/lib/monthly-billing";
 
 
@@ -15,7 +15,7 @@ import { LatePaymentDetails } from "@/components/sections/late-payment-details";
 import { latePaymentMessage, whatsappNumber } from "@/lib/late-payment-message";
 
 
-export function LateStudents({ data, update }: Props) {
+export function LateStudents({ data, registerPayments }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const late = data.students.filter((s) => s.due > 0);
@@ -35,51 +35,19 @@ export function LateStudents({ data, update }: Props) {
     setPayingStudent(student);
     router.replace("/late-students", { scroll: false });
   }, [data.students, router, searchParams]);
-  const registerPartialPayment = (student: Student, requestedAmount: number) => {
+  const registerPartialPayment = async (student: Student, requestedAmount: number) => {
     const invoices = outstandingPayments(student.id);
     const totalDue = invoices.reduce((sum, payment) => sum + remainingPaymentAmount(payment), 0);
     const paidNow = Math.max(0, Math.min(requestedAmount, totalDue));
     if (!paidNow) return;
     let remaining = paidNow;
-    let collectionIndex = 0;
-    const createdCollections: PaymentCollection[] = [];
-    const payments = data.payments.map((payment) => {
-      if (!invoices.some((invoice) => invoice.id === payment.id) || remaining <= 0) return payment;
+    const allocations = invoices.flatMap((payment) => {
+      if (remaining <= 0) return [];
       const applied = Math.min(remaining, remainingPaymentAmount(payment));
-      if (!applied) return payment;
       remaining -= applied;
-      const nextAmount = payment.amount + applied;
-      const totalAmount = payment.totalAmount ?? payment.amount;
-      const receiptNumber = `REC-${today.replaceAll("-", "")}-${String(student.id).slice(-4)}-${String(Date.now()).slice(-5)}-${collectionIndex + 1}`;
-      createdCollections.push({
-        id: Date.now() + collectionIndex,
-        paymentId: payment.id,
-        amount: applied,
-        date: today,
-        receiptNumber,
-      });
-      collectionIndex += 1;
-      return {
-        ...payment,
-        amount: nextAmount,
-        status: nextAmount >= totalAmount ? ("مدفوع" as const) : ("جزئي" as const),
-        date: today,
-        receiptNumber,
-      };
+      return applied ? [{ paymentId: payment.id, amount: applied }] : [];
     });
-    const due = payments
-      .filter((payment) => payment.studentId === student.id && payment.status !== "ملغاة")
-      .reduce((sum, payment) => sum + remainingPaymentAmount(payment), 0);
-    update(
-      {
-        ...data,
-        payments,
-        collections: [...data.collections, ...createdCollections],
-        students: data.students.map((item) => item.id === student.id ? { ...item, due, lastPayment: today } : item),
-      },
-      paidNow < totalDue ? "تم تسجيل دفعة جزئية" : "تم تسديد جميع المستحقات",
-    );
-    setPayingStudent(null);
+    if (await registerPayments?.(allocations)) setPayingStudent(null);
   };
   return (
     <>

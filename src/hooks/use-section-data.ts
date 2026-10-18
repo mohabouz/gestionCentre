@@ -411,24 +411,44 @@ export function useSectionData() {
     }
   };
 
-  const registerPayment = async (
-    paymentId: number,
-    amount: number,
-  ) => {
+  const registerPaymentRequest = async (paymentId: number, amount: number) => {
+    const response = await fetch(`/api/payments/${paymentId}/collections`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount, date: today }),
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(result?.error || "database");
+    return result;
+  };
+
+  const registerPayment = async (paymentId: number, amount: number) => {
     try {
-      const response = await fetch(`/api/payments/${paymentId}/collections`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, date: today }),
-      });
-      const result = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(result?.error || "database");
+      const result = await registerPaymentRequest(paymentId, amount);
       await refreshAfterMutation();
       setToast(result?.partial ? "تم تسجيل دفعة جزئية" : "تم تسجيل الدفعة وإصدار الوصل");
       window.setTimeout(() => setToast(""), 2200);
       return true;
     } catch (error) {
       setToast(error instanceof Error && error.message !== "database" ? error.message : "تعذر تسجيل الدفعة");
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
+  const registerPayments = async (
+    payments: Array<{ paymentId: number; amount: number }>,
+  ) => {
+    try {
+      for (const payment of payments.filter((item) => item.amount > 0)) {
+        await registerPaymentRequest(payment.paymentId, payment.amount);
+      }
+      await refreshAfterMutation();
+      setToast("تم تسجيل دفعات التلميذ");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(error instanceof Error && error.message !== "database" ? error.message : "تعذر تسجيل الدفعات");
       window.setTimeout(() => setToast(""), 2200);
       return false;
     }
@@ -449,6 +469,7 @@ export function useSectionData() {
     deleteRoom,
     saveAttendance,
     registerPayment,
+    registerPayments,
     toast,
   };
 }

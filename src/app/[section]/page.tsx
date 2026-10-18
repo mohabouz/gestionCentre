@@ -36,6 +36,7 @@ export default function SectionPage() {
     deleteRoom,
     saveAttendance,
     registerPayment,
+    registerPayments,
     toast,
   } = useSectionData();
   const { user } = useAuth();
@@ -98,11 +99,11 @@ export default function SectionPage() {
   ) : section === "registrations" ? (
     <EnrollmentRegistrations data={data} update={update} />
   ) : section === "payments" ? (
-    <Payments data={data} update={update} registerPayment={registerPayment} monthly />
+    <Payments data={data} update={update} registerPayment={registerPayment} registerPayments={registerPayments} monthly />
   ) : section === "annual-fees" ? (
     <AnnualFees data={data} update={update} />
   ) : section === "late-students" ? (
-    <LateStudents data={data} update={update} />
+    <LateStudents data={data} update={update} registerPayments={registerPayments} />
   ) : section === "payouts" ? (
     <Payouts data={data} update={update} />
   ) : section === "schedule" ? (
