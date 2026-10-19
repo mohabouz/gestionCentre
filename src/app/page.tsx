@@ -73,7 +73,7 @@ export default function Home() {
   const { user } = useAuth();
   const canViewFinance = user?.role === "SUPER_ADMIN";
   useEffect(() => {
-    fetch("/api/state", { cache: "no-store" })
+    fetch("/api/state?section=dashboard", { cache: "no-store" })
       .then((response) =>
         response.ok ? response.json() : Promise.reject(new Error("database")),
       )

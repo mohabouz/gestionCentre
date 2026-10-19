@@ -115,7 +115,7 @@ export function SettingsPage() {
         window.location.href = "/setup";
         return;
       }
-      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      const refreshed = await fetch("/api/state?section=settings", { cache: "no-store" });
       if (refreshed.ok) window.location.reload();
       setCleanupConfirmOpen(false);
     } catch (error) {

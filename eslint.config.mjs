@@ -20,7 +20,7 @@ const eslintConfig = defineConfig([
   {
     files: ["src/app/api/state/route.ts"],
     rules: {
-      // The legacy bulk-state endpoint will be removed as domain APIs are introduced.
+      // State normalization combines relational Prisma results into UI view models.
       "@typescript-eslint/no-explicit-any": "off",
     },
   },

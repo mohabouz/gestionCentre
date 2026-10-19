@@ -23,7 +23,6 @@ export default function SectionPage() {
   const section = pathname.split("/")[1] || "students";
   const {
     data,
-    update,
     deleteStudent,
     createExpense,
     deleteExpense,
@@ -31,6 +30,8 @@ export default function SectionPage() {
     deleteTeacher,
     saveCourse,
     deleteCourse,
+    createEnrollment,
+    saveLevel,
     saveSession,
     saveRoom,
     deleteRoom,
@@ -44,7 +45,7 @@ export default function SectionPage() {
     collectAnnualFee,
     saveStudent,
     toast,
-  } = useSectionData();
+  } = useSectionData(section);
   const { user } = useAuth();
   const restricted =
     user?.role === "ADMIN" &&
@@ -69,11 +70,10 @@ export default function SectionPage() {
       </div>
     </Card>
   ) : section === "students" ? (
-    <Students data={data} update={update} deleteStudent={deleteStudent} registerPayment={registerPayment} saveStudent={saveStudent} />
+    <Students data={data} deleteStudent={deleteStudent} registerPayment={registerPayment} saveStudent={saveStudent} />
   ) : section === "teachers" ? (
     <Teachers
       data={data}
-      update={update}
       saveTeacher={saveTeacher}
       deleteTeacher={deleteTeacher}
     />
@@ -86,42 +86,40 @@ export default function SectionPage() {
         levels: data.levels,
         enrollments: data.enrollments,
       }}
-      update={(next, message) => update({ ...data, ...next }, message)}
       saveCourse={saveCourse}
       deleteCourseById={deleteCourse}
+      createEnrollment={createEnrollment}
     />
   ) : section === "levels" ? (
     <LevelManagement
       levels={data.levels}
-      onUpdate={(levels) => update({ ...data, levels }, "تم حفظ تعديلات المستوى")}
+      onSave={saveLevel}
     />
   ) : section === "expenses" ? (
     <Expenses
       data={data}
-      update={update}
       createExpense={createExpense}
       deleteExpense={deleteExpense}
     />
   ) : section === "registrations" ? (
-    <EnrollmentRegistrations data={data} update={update} />
+    <EnrollmentRegistrations data={data} />
   ) : section === "payments" ? (
-    <Payments data={data} update={update} registerPayment={registerPayment} registerPayments={registerPayments} adjustPayment={adjustPayment} generateMonthlyPayments={generateMonthlyPayments} monthly />
+    <Payments data={data} registerPayment={registerPayment} registerPayments={registerPayments} adjustPayment={adjustPayment} generateMonthlyPayments={generateMonthlyPayments} monthly />
   ) : section === "annual-fees" ? (
-    <AnnualFees data={data} update={update} collectAnnualFee={collectAnnualFee} />
+    <AnnualFees data={data} collectAnnualFee={collectAnnualFee} />
   ) : section === "late-students" ? (
-    <LateStudents data={data} update={update} registerPayments={registerPayments} />
+    <LateStudents data={data} registerPayments={registerPayments} />
   ) : section === "payouts" ? (
-    <Payouts data={data} update={update} generatePayouts={generatePayouts} adjustPayout={adjustPayout} />
+    <Payouts data={data} generatePayouts={generatePayouts} adjustPayout={adjustPayout} />
   ) : section === "schedule" ? (
     <Schedule
       data={data}
-      update={update}
       saveSession={saveSession}
       saveRoom={saveRoom}
       deleteRoom={deleteRoom}
     />
   ) : section === "attendance" ? (
-    <Attendance data={data} update={update} saveAttendance={saveAttendance} />
+    <Attendance data={data} saveAttendance={saveAttendance} />
   ) : (
     <SettingsPage />
   );

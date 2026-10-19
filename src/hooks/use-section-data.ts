@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { initial, type Data } from "@/lib/section-data";
-import { refreshDraftPayouts } from "@/lib/payroll";
 import type {
   Attendance,
   Course,
+  Enrollment,
   Expense,
+  Level,
   Room,
   Session,
   Teacher,
@@ -14,16 +15,16 @@ import type {
 import { resolveSessionCourse } from "@/lib/session-course";
 import { today } from "@/lib/centman-store";
 
-export function useSectionData() {
+export function useSectionData(section: string) {
   const [data, setData] = useState<Data>(initial);
   const [toast, setToast] = useState("جاري تحميل البيانات...");
-  const stateVersion = useRef<string | null>(null);
+  const stateUrl = `/api/state?section=${encodeURIComponent(section)}`;
 
   useEffect(() => {
-    fetch("/api/state", { cache: "no-store" })
+    setData(initial);
+    fetch(stateUrl, { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("database");
-        stateVersion.current = response.headers.get("etag");
         return response.json();
       })
       .then((saved) => {
@@ -31,40 +32,7 @@ export function useSectionData() {
         setToast("");
       })
       .catch(() => setToast("تعذر تحميل البيانات من قاعدة البيانات"));
-  }, []);
-
-  const update = async (next: Data, message = "تم حفظ التغييرات") => {
-    const stateToSave = refreshDraftPayouts(data, next);
-    setData(stateToSave);
-
-    try {
-      const response = await fetch("/api/state", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(stateVersion.current ? { "If-Match": stateVersion.current } : {}),
-        },
-        body: JSON.stringify(stateToSave),
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        const details = await response.json().catch(() => null);
-        throw new Error(details?.error || "database");
-      }
-      stateVersion.current = response.headers.get("etag");
-      setData(await response.json());
-      setToast(message);
-    } catch (error) {
-      setData(data);
-      setToast(
-        error instanceof Error && error.message !== "database"
-          ? error.message
-          : "تعذر حفظ البيانات في قاعدة البيانات",
-      );
-    }
-
-    window.setTimeout(() => setToast(""), 2200);
-  };
+  }, [stateUrl]);
 
   const deleteStudent = async (id: number) => {
     const previous = data;
@@ -94,9 +62,8 @@ export function useSectionData() {
 
       // Refresh once so local cascade results and the concurrency token match
       // the database without uploading or rebuilding unrelated tables.
-      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      const refreshed = await fetch(stateUrl, { cache: "no-store" });
       if (!refreshed.ok) throw new Error("database");
-      stateVersion.current = refreshed.headers.get("etag");
       setData({ ...initial, ...(await refreshed.json()) });
       setToast("تم حذف التلميذ");
     } catch (error) {
@@ -125,9 +92,8 @@ export function useSectionData() {
         ...current,
         expenses: [...current.expenses, result],
       }));
-      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      const refreshed = await fetch(stateUrl, { cache: "no-store" });
       if (!refreshed.ok) throw new Error("database");
-      stateVersion.current = refreshed.headers.get("etag");
       setData({ ...initial, ...(await refreshed.json()) });
       setToast("تمت إضافة المصروف");
       window.setTimeout(() => setToast(""), 2200);
@@ -158,9 +124,8 @@ export function useSectionData() {
         const details = await response.json().catch(() => null);
         throw new Error(details?.error || "database");
       }
-      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      const refreshed = await fetch(stateUrl, { cache: "no-store" });
       if (!refreshed.ok) throw new Error("database");
-      stateVersion.current = refreshed.headers.get("etag");
       setData({ ...initial, ...(await refreshed.json()) });
       setToast("تم حذف المصروف");
     } catch (error) {
@@ -189,9 +154,8 @@ export function useSectionData() {
       const result = await response.json().catch(() => null);
       if (!response.ok) throw new Error(result?.error || "database");
 
-      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      const refreshed = await fetch(stateUrl, { cache: "no-store" });
       if (!refreshed.ok) throw new Error("database");
-      stateVersion.current = refreshed.headers.get("etag");
       setData({ ...initial, ...(await refreshed.json()) });
       setToast("تم حفظ الأستاذ");
       window.setTimeout(() => setToast(""), 2200);
@@ -222,9 +186,8 @@ export function useSectionData() {
         const details = await response.json().catch(() => null);
         throw new Error(details?.error || "database");
       }
-      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      const refreshed = await fetch(stateUrl, { cache: "no-store" });
       if (!refreshed.ok) throw new Error("database");
-      stateVersion.current = refreshed.headers.get("etag");
       setData({ ...initial, ...(await refreshed.json()) });
       setToast("تم حذف الأستاذ");
     } catch (error) {
@@ -250,9 +213,8 @@ export function useSectionData() {
       );
       const result = await response.json().catch(() => null);
       if (!response.ok) throw new Error(result?.error || "database");
-      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      const refreshed = await fetch(stateUrl, { cache: "no-store" });
       if (!refreshed.ok) throw new Error("database");
-      stateVersion.current = refreshed.headers.get("etag");
       setData({ ...initial, ...(await refreshed.json()) });
       setToast("تم حفظ المادة أو الباقة");
       window.setTimeout(() => setToast(""), 2200);
@@ -278,9 +240,8 @@ export function useSectionData() {
         const details = await response.json().catch(() => null);
         throw new Error(details?.error || "database");
       }
-      const refreshed = await fetch("/api/state", { cache: "no-store" });
+      const refreshed = await fetch(stateUrl, { cache: "no-store" });
       if (!refreshed.ok) throw new Error("database");
-      stateVersion.current = refreshed.headers.get("etag");
       setData({ ...initial, ...(await refreshed.json()) });
       setToast("تم حذف المادة أو الباقة والتسجيلات المرتبطة");
       window.setTimeout(() => setToast(""), 2200);
@@ -296,10 +257,49 @@ export function useSectionData() {
     }
   };
 
+  const createEnrollment = async (enrollment: Omit<Enrollment, "id">) => {
+    try {
+      const response = await fetch("/api/enrollments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(enrollment),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+      await refreshAfterMutation();
+      setToast("تمت إضافة التسجيل وتوليد دفعة الشهر");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(error instanceof Error && error.message !== "database" ? error.message : "تعذر إضافة التسجيل");
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
+  const saveLevel = async (level: Level) => {
+    try {
+      const response = await fetch(`/api/levels/${level.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(level),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+      await refreshAfterMutation();
+      setToast("تم حفظ تعديلات المستوى");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(error instanceof Error && error.message !== "database" ? error.message : "تعذر حفظ المستوى");
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
   const refreshAfterMutation = async () => {
-    const refreshed = await fetch("/api/state", { cache: "no-store" });
+    const refreshed = await fetch(stateUrl, { cache: "no-store" });
     if (!refreshed.ok) throw new Error("database");
-    stateVersion.current = refreshed.headers.get("etag");
     setData({ ...initial, ...(await refreshed.json()) });
   };
 
@@ -591,7 +591,6 @@ export function useSectionData() {
 
   return {
     data,
-    update,
     deleteStudent,
     createExpense,
     deleteExpense,
@@ -599,6 +598,8 @@ export function useSectionData() {
     deleteTeacher,
     saveCourse,
     deleteCourse,
+    createEnrollment,
+    saveLevel,
     saveSession,
     saveRoom,
     deleteRoom,

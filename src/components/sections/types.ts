@@ -3,7 +3,9 @@
 import type { Data } from "@/lib/section-data";
 import type {
   Attendance as AttendanceRecord,
+  Enrollment,
   Expense,
+  Level,
   Room,
   Session,
   Student,
@@ -15,7 +17,6 @@ export type AdminUser = { id: number; name: string; username: string; role: "ADM
 
 export type Props = {
   data: Data;
-  update: (data: Data, message?: string) => void;
   deleteStudent?: (id: number) => Promise<void>;
   createExpense?: (expense: Omit<Expense, "id">) => Promise<boolean>;
   deleteExpense?: (id: number) => Promise<void>;
@@ -59,4 +60,6 @@ export type Props = {
     courseIds: number[],
     paidAmounts: { annual: number; courses: Record<number, number>; discounts: Record<number, number> },
   ) => Promise<boolean>;
+  createEnrollment?: (enrollment: Omit<Enrollment, "id">) => Promise<boolean>;
+  saveLevel?: (level: Level) => Promise<boolean>;
 };

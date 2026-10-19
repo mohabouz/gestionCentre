@@ -17,14 +17,12 @@ type Data = {
 
 type Props = {
   data: Data;
-  update: (data: Data, message?: string) => void;
   saveCourse: (course: Course) => Promise<boolean>;
   deleteCourseById: (id: number) => Promise<boolean>;
+  createEnrollment: (enrollment: Omit<Enrollment, "id">) => Promise<boolean>;
 };
 
-const nextId = (items: Array<{ id: number }>) => Math.max(0, ...items.map((item) => item.id)) + 1;
-
-export function CourseManagement({ data, update, saveCourse: persistCourse, deleteCourseById }: Props) {
+export function CourseManagement({ data, saveCourse: persistCourse, deleteCourseById, createEnrollment }: Props) {
   const [tab, setTab] = useState<"مادة" | "باقة">("مادة");
   const [courseEditor, setCourseEditor] = useState<Course | null>(null);
   const [enrollmentOpen, setEnrollmentOpen] = useState(false);
@@ -125,10 +123,9 @@ export function CourseManagement({ data, update, saveCourse: persistCourse, dele
           levels={data.levels}
           enrollments={data.enrollments}
           onClose={() => setEnrollmentOpen(false)}
-          onSave={(enrollment) => {
+          onSave={async (enrollment) => {
             if (data.enrollments.some((item) => item.studentId === enrollment.studentId && item.courseId === enrollment.courseId && item.status === "نشط")) return;
-            update({ ...data, enrollments: [...data.enrollments, { ...enrollment, id: nextId(data.enrollments) }] }, "تمت إضافة التسجيل");
-            setEnrollmentOpen(false);
+            if (await createEnrollment(enrollment)) setEnrollmentOpen(false);
           }}
         />
       )}
@@ -200,10 +197,12 @@ function TeacherPicker({ teachers, value, onChange }: { teachers: Teacher[]; val
   return <label className="block text-right"><span className="mb-2 block text-xs font-bold text-[#6c6c6c]">الأستاذ</span><select required value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-[#e5e5e5] bg-white p-3 text-sm"><option value="">اختر الأستاذ</option>{teachers.map((teacher) => <option key={teacher.id} value={teacher.name}>{teacher.name} • {teacher.specialty}</option>)}</select></label>;
 }
 
-function EnrollmentModal({ students, courses, levels, enrollments, onClose, onSave }: { students: Student[]; courses: Course[]; levels: Level[]; enrollments: Enrollment[]; onClose: () => void; onSave: (enrollment: Omit<Enrollment, "id">) => void }) {
-  const [studentId, setStudentId] = useState(students[0]?.id || 0);
+function EnrollmentModal({ students, courses, levels, enrollments, onClose, onSave }: { students: Student[]; courses: Course[]; levels: Level[]; enrollments: Enrollment[]; onClose: () => void; onSave: (enrollment: Omit<Enrollment, "id">) => void | Promise<void> }) {
+  const initialStudentId = students[0]?.id || 0;
+  const initialCourseId = courses.find((course) => !enrollments.some((enrollment) => enrollment.studentId === initialStudentId && enrollment.courseId === course.id && enrollment.status === "نشط"))?.id || 0;
+  const [studentId, setStudentId] = useState(initialStudentId);
   const available = courses.filter((course) => !enrollments.some((enrollment) => enrollment.studentId === studentId && enrollment.courseId === course.id && enrollment.status === "نشط"));
-  const [courseId, setCourseId] = useState(courses[0]?.id || 0);
+  const [courseId, setCourseId] = useState(initialCourseId);
   const [discount, setDiscount] = useState(0);
   const selectedCourse = courses.find((course) => course.id === courseId);
   return <Modal title="إضافة تسجيل جديد" onClose={onClose}><form onSubmit={(event) => { event.preventDefault(); onSave({ studentId, courseId, enrolledAt: today, status: "نشط", discount: Math.max(0, Math.min(discount, selectedCourse?.price || 0)) }); }} className="space-y-4"><label className="block text-right"><span className="mb-2 block text-xs font-bold text-[#6c6c6c]">اختر الطالب</span><select value={studentId} onChange={(event) => { const nextStudentId = Number(event.target.value); const nextCourse = courses.find((course) => !enrollments.some((enrollment) => enrollment.studentId === nextStudentId && enrollment.courseId === course.id && enrollment.status === "نشط")); setStudentId(nextStudentId); setCourseId(nextCourse?.id || 0); setDiscount(0); }} className="w-full rounded-xl border border-[#e5e5e5] bg-white p-3 text-sm">{students.map((student) => <option key={student.id} value={student.id}>{student.name}</option>)}</select></label><div><p className="mb-2 text-center text-xs font-bold text-[#6c6c6c]">المادة أو الباقة</p><CoursePicker courses={available} levels={levels} value={courseId || null} onChange={(value) => { setCourseId(value || 0); setDiscount(0); }} showPrice /></div><div className="mx-auto max-w-xs"><Field label="الخصم (MAD)" type="number" value={discount} onChange={(value) => setDiscount(Math.max(0, Math.min(Number(value), selectedCourse?.price || 0)))} /><p className="mt-2 rounded-xl bg-[#e6f5ee] p-3 text-center text-xs font-bold text-[#008a55]">السعر بعد الخصم: {money(Math.max(0, (selectedCourse?.price || 0) - discount))}</p></div><div className="flex justify-end gap-2"><Button variant="outline" onClick={onClose}>إلغاء</Button><Button type="submit" disabled={!available.length}>إضافة التسجيل</Button></div></form></Modal>;

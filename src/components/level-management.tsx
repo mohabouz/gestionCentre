@@ -41,10 +41,10 @@ const curriculumFilters: Array<{ value: CurriculumFilter; label: string }> = [
 
 export function LevelManagement({
   levels,
-  onUpdate,
+  onSave,
 }: {
   levels: Level[];
-  onUpdate: (levels: Level[]) => void;
+  onSave: (level: Level) => Promise<boolean>;
 }) {
   const [filter, setFilter] = useState<CycleFilter>("الكل");
   const [curriculum, setCurriculum] = useState<CurriculumFilter>("ALL");
@@ -61,9 +61,8 @@ export function LevelManagement({
     [curriculum, filter, levels],
   );
 
-  const saveLevel = (level: Level) => {
-    onUpdate(levels.map((item) => (item.id === level.id ? level : item)));
-    setEditing(null);
+  const saveLevel = async (level: Level) => {
+    if (await onSave(level)) setEditing(null);
   };
 
   return (
@@ -170,7 +169,7 @@ function LevelEditor({
 }: {
   level: Level;
   onClose: () => void;
-  onSave: (level: Level) => void;
+  onSave: (level: Level) => void | Promise<void>;
 }) {
   const [form, setForm] = useState(level);
   const submit = (event: FormEvent) => {
