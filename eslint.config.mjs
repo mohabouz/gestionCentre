@@ -28,6 +28,7 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    ".next-desktop/**",
     "out/**",
     "build/**",
     "desktop-build/**",

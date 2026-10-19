@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Prisma } from "@/generated/prisma/client";
 import { formatBillingMonth } from "@/lib/centman-store";
+import { shouldCancelPaymentForOptOut } from "@/lib/monthly-billing";
 
 type RegistrationInput = {
   name: string; phone: string; whatsapp?: string; status: string;
@@ -51,8 +52,24 @@ export async function saveStudentRegistration(tx: Prisma.TransactionClient, inpu
   const student = existing ? await tx.student.update({ where: { id: studentId }, data: studentData }) : await tx.student.create({ data: studentData });
   const active = await tx.enrollment.findMany({ where: { studentId: student.id, status: "نشط" } });
   for (const enrollment of active) {
-    if (!input.courseIds.includes(enrollment.courseId)) await tx.enrollment.update({ where: { id: enrollment.id }, data: { status: "منتهية", removedAt: input.date } });
-    else {
+    if (!input.courseIds.includes(enrollment.courseId)) {
+      await tx.enrollment.update({
+        where: { id: enrollment.id },
+        data: { status: "منتهية", removedAt: input.date },
+      });
+      const generatedPayments = await tx.payment.findMany({
+        where: { enrollmentId: enrollment.id, status: { not: "ملغاة" } },
+      });
+      const cancelledIds = generatedPayments
+        .filter((payment) => shouldCancelPaymentForOptOut(payment, input.date.slice(0, 7)))
+        .map((payment) => payment.id);
+      if (cancelledIds.length) {
+        await tx.payment.updateMany({
+          where: { id: { in: cancelledIds } },
+          data: { amount: 0, status: "ملغاة", date: "", method: null, receiptNumber: null },
+        });
+      }
+    } else {
       const course = courses.find((item) => item.id === enrollment.courseId)!;
       const discount = Math.max(0, Math.min(Number(input.paidAmounts.discounts[course.id] || 0), course.price));
       await tx.enrollment.update({ where: { id: enrollment.id }, data: { discount } });

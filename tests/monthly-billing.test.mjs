@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { discountedPrice, enrollmentAppliesToMonth, paymentBillingMonth, remainingPaymentAmount } from "../src/lib/monthly-billing.ts";
+import { discountedPrice, enrollmentAppliesToMonth, paymentBillingMonth, remainingPaymentAmount, shouldCancelPaymentForOptOut } from "../src/lib/monthly-billing.ts";
 
 test("an enrollment recurs from its first month onward", () => {
   const enrollment = { enrolledAt: "2026-09-20", status: "نشط" };
@@ -34,4 +34,13 @@ test("discount is applied per enrollment and cannot make its price negative", ()
 test("remaining amount supports partial payments without becoming negative", () => {
   assert.equal(remainingPaymentAmount({ amount: 150, totalAmount: 500 }), 350);
   assert.equal(remainingPaymentAmount({ amount: 600, totalAmount: 500 }), 0);
+});
+
+test("opt-out cancels only unpaid charges from the effective month onward", () => {
+  const payment = { billingMonth: "2026-10", month: "أكتوبر 2026", date: "", amount: 0, totalAmount: 250, status: "مسودة" };
+  assert.equal(shouldCancelPaymentForOptOut(payment, "2026-10"), true);
+  assert.equal(shouldCancelPaymentForOptOut({ ...payment, billingMonth: "2026-11" }, "2026-10"), true);
+  assert.equal(shouldCancelPaymentForOptOut({ ...payment, billingMonth: "2026-09" }, "2026-10"), false);
+  assert.equal(shouldCancelPaymentForOptOut({ ...payment, amount: 100, status: "جزئي" }, "2026-10"), false);
+  assert.equal(shouldCancelPaymentForOptOut({ ...payment, amount: 250, status: "مدفوع" }, "2026-10"), false);
 });

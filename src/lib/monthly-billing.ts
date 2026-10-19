@@ -32,12 +32,21 @@ export function discountedPrice(price: number, discount = 0) {
   return Math.max(0, price - Math.max(0, Math.min(discount, price)));
 }
 
-export function recordedPaymentAmount(payment: { amount: number; totalAmount?: number; status?: string }) {
+export function recordedPaymentAmount(payment: { amount: number; totalAmount?: number | null; status?: string }) {
   if (payment.totalAmount == null && (payment.status === "متأخر" || payment.status === "مسودة")) return 0;
   return payment.amount;
 }
 
-export function remainingPaymentAmount(payment: { amount: number; totalAmount?: number; status?: string }) {
+export function remainingPaymentAmount(payment: { amount: number; totalAmount?: number | null; status?: string }) {
   if (payment.totalAmount == null && (payment.status === "متأخر" || payment.status === "مسودة")) return Math.max(0, payment.amount);
   return Math.max(0, (payment.totalAmount ?? payment.amount) - payment.amount);
+}
+
+export function shouldCancelPaymentForOptOut(
+  payment: { billingMonth?: string | null; month?: string; date: string; amount: number; totalAmount?: number | null; status: string },
+  effectiveMonth: string,
+) {
+  if (payment.status === "ملغاة" || recordedPaymentAmount(payment) > 0) return false;
+  const billingMonth = paymentBillingMonth(payment);
+  return Boolean(billingMonth && billingMonth >= effectiveMonth);
 }
