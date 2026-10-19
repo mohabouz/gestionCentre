@@ -43,6 +43,11 @@ export type Props = {
     action: "revise" | "draft" | "cancel",
     amount?: number,
   ) => Promise<boolean>;
+  generatePayouts?: (month: string) => Promise<boolean>;
+  adjustPayout?: (
+    payoutId: number,
+    action: "finalize" | "draft" | "cancel",
+  ) => Promise<boolean>;
   generateMonthlyPayments?: (month: string) => Promise<boolean>;
   collectAnnualFee?: (
     studentId: number,

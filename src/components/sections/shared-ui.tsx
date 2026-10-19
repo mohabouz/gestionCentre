@@ -11,15 +11,17 @@ export function Modal({
   onClose,
   children,
   footer,
+  wide = false,
 }: {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  wide?: boolean;
 }) {
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#15231d]/30 p-4">
-      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white p-6 shadow-2xl">
+      <div className={`flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-2xl bg-white p-6 shadow-2xl ${wide ? "max-w-5xl" : "max-w-lg"}`}>
         <div className="mb-5 flex shrink-0 items-center justify-between">
           <h3 className="text-lg font-black text-[#17251f]">{title}</h3>
           <button onClick={onClose} className="text-[#84938b]">

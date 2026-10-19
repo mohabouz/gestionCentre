@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Printer } from "lucide-react";
 import { Button, Card, PageTitle } from "@/components/centman-shell";
-import { Course, Payout, Teacher, currentMonth, formatBillingMonth, money, today } from "@/lib/centman-store";
+import { Payout, Teacher, currentMonth, formatBillingMonth, money } from "@/lib/centman-store";
 import { printTeacherPaymentReport } from "@/lib/payout-report";
 
 
@@ -12,110 +12,15 @@ import type { Props } from "@/components/sections/types";
 import { TeacherReport } from "@/components/sections/teacher-report";
 
 
-export function Payouts({ data, update }: Props) {
+export function Payouts({ data, generatePayouts, adjustPayout }: Props) {
   const [reportTeacher, setReportTeacher] = useState<Teacher | null>(null);
   const [month, setMonth] = useState(currentMonth);
   const historicalPayouts = data.payouts.filter((payout) => payout.month !== month);
-  const enrollmentSubjects = (course: Course) =>
-    course.type === "باقة"
-      ? (course.subjectIds || [])
-        .map((subjectId) =>
-          data.courses.find((item) => item.id === subjectId),
-        )
-        .filter((subject): subject is Course => Boolean(subject))
-      : [course];
-  const teacherMetrics = (teacher: Teacher) => {
-    const studentIds = new Set<number>();
-    let revenue = 0;
-    for (const collection of data.collections) {
-      if (collection.date.slice(0, 7) !== month) continue;
-      const payment = data.payments.find((item) => item.id === collection.paymentId);
-      if (!payment || (payment.status !== "مدفوع" && payment.status !== "جزئي")) continue;
-      const enrollment = data.enrollments.find((item) => item.id === payment.enrollmentId);
-      const legacyCourseName = payment.month.match(/^(?:مادة|باقة):\s*(.+)$/)?.[1];
-      const course = data.courses.find((item) => item.id === payment.courseId)
-        || data.courses.find((item) => item.id === enrollment?.courseId)
-        || data.courses.find((item) => item.name === legacyCourseName);
-      if (!course) continue;
-      const subjects = enrollmentSubjects(course);
-      const teacherSubjects = subjects.filter((subject) => subject.teacher === teacher.name);
-      if (!teacherSubjects.length) continue;
-      studentIds.add(payment.studentId);
-      revenue += collection.amount * teacherSubjects.length / subjects.length;
-    }
-    return { studentCount: studentIds.size, revenue: Math.round(revenue) };
-  };
-  const generateMonthlyPayouts = () => {
-    const missingTeachers = data.teachers.filter(
-      (teacher) => !data.payouts.some((payout) => payout.teacherId === teacher.id && payout.month === month),
-    );
-    if (!missingTeachers.length) return;
-    const firstId = Math.max(0, ...data.payouts.map((payout) => payout.id)) + 1;
-    const generated = missingTeachers.map((teacher, index) => {
-      const { studentCount, revenue } = teacherMetrics(teacher);
-      return {
-        id: firstId + index,
-        teacherId: teacher.id,
-        teacher: teacher.name,
-        month,
-        studentCount,
-        revenue,
-        commission: teacher.commission,
-        amount: Math.round((revenue * teacher.commission) / 100),
-        status: "مسودة" as const,
-      };
-    });
-    update(
-      { ...data, payouts: [...data.payouts, ...generated] },
-      `تم توليد ${generated.length} راتب لشهر ${formatBillingMonth(month)}`,
-    );
-  };
-  const pay = (payout: Payout) =>
-    update(
-      {
-        ...data,
-        payouts: data.payouts.map((p) =>
-          p.id === payout.id ? { ...p, status: "مدفوعة", paidAt: today } : p,
-        ),
-      },
-      "تم اعتماد وصرف الراتب",
-    );
-  const returnPayoutToDraft = (payout: Payout) =>
-    update(
-      {
-        ...data,
-        payouts: data.payouts.map((item) =>
-          item.id === payout.id
-            ? { ...item, status: "مسودة" as const, paidAt: undefined }
-            : item,
-        ),
-      },
-      "تمت إعادة الراتب إلى مسودة",
-    );
-  const cancelPayoutDraft = (payout: Payout) =>
-    update(
-      {
-        ...data,
-        payouts: data.payouts.map((item) =>
-          item.id === payout.id
-            ? { ...item, status: "ملغاة" as const, paidAt: undefined }
-            : item,
-        ),
-      },
-      "تم إلغاء مسودة الراتب",
-    );
-  const restorePayoutDraft = (payout: Payout) =>
-    update(
-      {
-        ...data,
-        payouts: data.payouts.map((item) =>
-          item.id === payout.id
-            ? { ...item, status: "مسودة" as const, paidAt: undefined }
-            : item,
-        ),
-      },
-      "تمت إعادة الراتب الملغى إلى مسودة للمراجعة",
-    );
+  const generateMonthlyPayouts = () => void generatePayouts?.(month);
+  const pay = (payout: Payout) => void adjustPayout?.(payout.id, "finalize");
+  const returnPayoutToDraft = (payout: Payout) => void adjustPayout?.(payout.id, "draft");
+  const cancelPayoutDraft = (payout: Payout) => void adjustPayout?.(payout.id, "cancel");
+  const restorePayoutDraft = (payout: Payout) => void adjustPayout?.(payout.id, "draft");
   return (
     <>
       <PageTitle

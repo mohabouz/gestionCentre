@@ -38,6 +38,8 @@ export default function SectionPage() {
     registerPayment,
     registerPayments,
     adjustPayment,
+    generatePayouts,
+    adjustPayout,
     generateMonthlyPayments,
     collectAnnualFee,
     saveStudent,
@@ -109,7 +111,7 @@ export default function SectionPage() {
   ) : section === "late-students" ? (
     <LateStudents data={data} update={update} registerPayments={registerPayments} />
   ) : section === "payouts" ? (
-    <Payouts data={data} update={update} />
+    <Payouts data={data} update={update} generatePayouts={generatePayouts} adjustPayout={adjustPayout} />
   ) : section === "schedule" ? (
     <Schedule
       data={data}

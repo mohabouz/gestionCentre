@@ -1,6 +1,14 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 
 export async function refreshDraftPayouts(month: string) {
+  return prisma.$transaction((tx) => refreshDraftPayoutsInTransaction(tx, month));
+}
+
+export async function refreshDraftPayoutsInTransaction(
+  tx: Prisma.TransactionClient,
+  month: string,
+) {
   const courseInclude = {
     teacher: { select: { id: true } },
     packSubjects: {
@@ -8,8 +16,8 @@ export async function refreshDraftPayouts(month: string) {
     },
   } as const;
   const [payouts, collections] = await Promise.all([
-    prisma.payout.findMany({ where: { month, status: "مسودة" } }),
-    prisma.paymentCollection.findMany({
+    tx.payout.findMany({ where: { month, status: "مسودة" } }),
+    tx.paymentCollection.findMany({
       where: { date: { startsWith: month } },
       include: {
         payment: {
@@ -40,7 +48,7 @@ export async function refreshDraftPayouts(month: string) {
       revenue += collection.amount * teacherSubjects.length / subjects.length;
     }
     const roundedRevenue = Math.round(revenue);
-    await prisma.payout.update({
+    await tx.payout.update({
       where: { id: payout.id },
       data: {
         studentCount: studentIds.size,

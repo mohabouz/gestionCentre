@@ -478,6 +478,49 @@ export function useSectionData() {
     }
   };
 
+  const generatePayouts = async (month: string) => {
+    try {
+      const response = await fetch("/api/payouts/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+      await refreshAfterMutation();
+      setToast(result.created ? `تم توليد ${result.created} راتب` : "رواتب هذا الشهر مولدة مسبقاً وتم تحديثها");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(error instanceof Error && error.message !== "database" ? error.message : "تعذر توليد الرواتب");
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
+  const adjustPayout = async (
+    payoutId: number,
+    action: "finalize" | "draft" | "cancel",
+  ) => {
+    try {
+      const response = await fetch(`/api/payouts/${payoutId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, date: today }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+      await refreshAfterMutation();
+      setToast(action === "finalize" ? "تم اعتماد وصرف الراتب" : action === "cancel" ? "تم إلغاء مسودة الراتب" : "تمت إعادة الراتب إلى مسودة");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(error instanceof Error && error.message !== "database" ? error.message : "تعذر تعديل الراتب");
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
   const generateMonthlyPayments = async (month: string) => {
     try {
       const response = await fetch("/api/payments/generate", {
@@ -563,6 +606,8 @@ export function useSectionData() {
     registerPayment,
     registerPayments,
     adjustPayment,
+    generatePayouts,
+    adjustPayout,
     generateMonthlyPayments,
     collectAnnualFee,
     saveStudent,

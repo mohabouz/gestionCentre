@@ -1,6 +1,7 @@
 "use client";
 
 import { Course, Teacher, formatBillingMonth, money } from "@/lib/centman-store";
+import { courseLevelLabel } from "@/lib/course-level";
 
 
 import { EmptyState, Modal, Table, Td, Th } from "@/components/sections/shared-ui";
@@ -47,7 +48,7 @@ export function TeacherReport({
       }));
   });
   return (
-    <Modal title={`التقرير التفصيلي: ${teacher.name} • ${formatBillingMonth(month)}`} onClose={onClose}>
+    <Modal title={`التقرير التفصيلي: ${teacher.name} • ${formatBillingMonth(month)}`} onClose={onClose} wide>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-[#f5f7ff] p-3 text-xs">
@@ -65,16 +66,14 @@ export function TeacherReport({
         </div>
         <Table>
           <Th>التلميذ</Th>
-          <Th>القسم/الدورة</Th>
+          <Th>المادة - المستوى</Th>
           <Th>المدفوع</Th>
           <Th>حصة الأستاذ</Th>
           {rows.map(({ student, course, subject, collectedAmount }, index) => (
             <tr key={`${student.id}-${course.id}-${subject.id}-${index}`}>
               <Td>{student.name}</Td>
               <Td>
-                {course.type === "باقة"
-                  ? `${course.name} • ${subject.name}`
-                  : subject.name}
+                {`${course.type === "باقة" ? `${course.name} • ${subject.name}` : subject.name} - ${courseLevelLabel(subject, data.levels) || courseLevelLabel(course, data.levels) || "بدون مستوى"}`}
               </Td>
               <Td>{money(collectedAmount)}</Td>
               <Td className="font-bold text-[#5054c0]">
