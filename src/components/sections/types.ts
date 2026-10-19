@@ -38,6 +38,11 @@ export type Props = {
   registerPayments?: (
     payments: Array<{ paymentId: number; amount: number }>,
   ) => Promise<boolean>;
+  adjustPayment?: (
+    paymentId: number,
+    action: "revise" | "draft" | "cancel",
+    amount?: number,
+  ) => Promise<boolean>;
   generateMonthlyPayments?: (month: string) => Promise<boolean>;
   collectAnnualFee?: (
     studentId: number,

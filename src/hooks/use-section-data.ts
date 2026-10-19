@@ -454,6 +454,30 @@ export function useSectionData() {
     }
   };
 
+  const adjustPayment = async (
+    paymentId: number,
+    action: "revise" | "draft" | "cancel",
+    amount?: number,
+  ) => {
+    try {
+      const response = await fetch(`/api/payments/${paymentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, amount, date: today }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "database");
+      await refreshAfterMutation();
+      setToast(action === "revise" ? "تم تعديل الدفعة" : action === "draft" ? "تمت إعادة الدفعة إلى مسودة" : "تم إلغاء مسودة الدفعة");
+      window.setTimeout(() => setToast(""), 2200);
+      return true;
+    } catch (error) {
+      setToast(error instanceof Error && error.message !== "database" ? error.message : "تعذر تعديل الدفعة");
+      window.setTimeout(() => setToast(""), 2200);
+      return false;
+    }
+  };
+
   const generateMonthlyPayments = async (month: string) => {
     try {
       const response = await fetch("/api/payments/generate", {
@@ -538,6 +562,7 @@ export function useSectionData() {
     saveAttendance,
     registerPayment,
     registerPayments,
+    adjustPayment,
     generateMonthlyPayments,
     collectAnnualFee,
     saveStudent,

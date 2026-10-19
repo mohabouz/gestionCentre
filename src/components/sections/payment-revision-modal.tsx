@@ -14,7 +14,7 @@ export function PaymentRevisionModal({
 }: {
   payment: Payment;
   onClose: () => void;
-  onSave: (amount: number) => void;
+  onSave: (amount: number) => void | Promise<void>;
 }) {
   const [amount, setAmount] = useState(String(payment.amount));
   return (

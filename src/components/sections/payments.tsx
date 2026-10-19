@@ -3,7 +3,7 @@
 import { Fragment, useState } from "react";
 import { ChevronLeft, ChevronUp, Search } from "lucide-react";
 import { Button, Card, PageTitle } from "@/components/centman-shell";
-import { Payment, currentMonth, formatBillingMonth, money, today } from "@/lib/centman-store";
+import { Payment, currentMonth, formatBillingMonth, money } from "@/lib/centman-store";
 import { paymentBillingMonth, recordedPaymentAmount, remainingPaymentAmount } from "@/lib/monthly-billing";
 import { courseLevelLabel } from "@/lib/course-level";
 import { CoursePicker } from "@/components/course-picker";
@@ -16,7 +16,7 @@ import { PaymentRevisionModal } from "@/components/sections/payment-revision-mod
 import { MonthlyStudentPaymentModal } from "@/components/sections/monthly-student-payment-modal";
 
 
-export function Payments({ data, update, registerPayment, registerPayments, generateMonthlyPayments: generatePayments, monthly }: Props & { monthly: boolean }) {
+export function Payments({ data, registerPayment, registerPayments, adjustPayment, generateMonthlyPayments: generatePayments, monthly }: Props & { monthly: boolean }) {
   const [query, setQuery] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [courseFilter, setCourseFilter] = useState<number | null>(null);
@@ -34,136 +34,11 @@ export function Payments({ data, update, registerPayment, registerPayments, gene
       setRegisteringPayment(null);
     }
   };
-  const returnToDraft = (payment: Payment) => {
-    const updatedPayments = data.payments.map((item) =>
-      item.id === payment.id
-        ? {
-          ...item,
-          amount: 0,
-          status: "مسودة" as const,
-          date: "",
-          method: undefined,
-          receiptNumber: undefined,
-        }
-        : item,
-    );
-    update(
-      {
-        ...data,
-        payments: updatedPayments,
-        students: data.students.map((student) =>
-          student.id === payment.studentId
-            ? {
-              ...student,
-              due: updatedPayments
-                .filter((item) => item.studentId === student.id)
-                .reduce(
-                  (sum, item) =>
-                    sum +
-                    Math.max(
-                      0,
-                      (item.totalAmount ?? item.amount) - item.amount,
-                    ),
-                  0,
-                ),
-              lastPayment:
-                updatedPayments
-                  .filter(
-                    (item) =>
-                      item.studentId === student.id && item.amount > 0,
-                  )
-                  .sort((a, b) => b.date.localeCompare(a.date))[0]?.date ||
-                "",
-            }
-            : student,
-        ),
-      },
-      "تمت إعادة الدفعة إلى مسودة",
-    );
+  const returnToDraft = (payment: Payment) => void adjustPayment?.(payment.id, "draft");
+  const revisePayment = async (payment: Payment, amount: number) => {
+    if (await adjustPayment?.(payment.id, "revise", amount)) setEditingPayment(null);
   };
-  const revisePayment = (payment: Payment, amount: number) => {
-    const paid = Math.max(
-      0,
-      Math.min(amount, payment.totalAmount ?? payment.amount),
-    );
-    const updatedPayments = data.payments.map((item) =>
-      item.id === payment.id
-        ? {
-          ...item,
-          amount: paid,
-          status:
-            paid === (item.totalAmount ?? item.amount)
-              ? ("مدفوع" as const)
-              : paid > 0
-                ? ("جزئي" as const)
-                : ("مسودة" as const),
-          date: paid > 0 ? today : "",
-          method: paid > 0 ? item.method || ("نقدي" as const) : undefined,
-          receiptNumber:
-            paid > 0
-              ? item.receiptNumber ||
-              `REC-${today.replaceAll("-", "")}-${String(item.id).slice(-4)}`
-              : undefined,
-        }
-        : item,
-    );
-    update(
-      {
-        ...data,
-        payments: updatedPayments,
-        students: data.students.map((student) =>
-          student.id === payment.studentId
-            ? {
-              ...student,
-              due: updatedPayments
-                .filter(
-                  (item) =>
-                    item.studentId === student.id && item.status !== "ملغاة",
-                )
-                .reduce(
-                  (sum, item) =>
-                    sum +
-                    Math.max(
-                      0,
-                      (item.totalAmount ?? item.amount) - item.amount,
-                    ),
-                  0,
-                ),
-              lastPayment:
-                updatedPayments
-                  .filter(
-                    (item) =>
-                      item.studentId === student.id && item.amount > 0,
-                  )
-                  .sort((a, b) => b.date.localeCompare(a.date))[0]?.date ||
-                "",
-            }
-            : student,
-        ),
-      },
-      "تم تعديل الدفعة",
-    );
-    setEditingPayment(null);
-  };
-  const cancelDraft = (payment: Payment) =>
-    update(
-      {
-        ...data,
-        payments: data.payments.map((item) =>
-          item.id === payment.id
-            ? {
-              ...item,
-              amount: 0,
-              status: "ملغاة" as const,
-              date: "",
-              method: undefined,
-              receiptNumber: undefined,
-            }
-            : item,
-        ),
-      },
-      "تم إلغاء مسودة الدفعة",
-    );
+  const cancelDraft = (payment: Payment) => void adjustPayment?.(payment.id, "cancel");
   const paymentCourseLabel = (payment: Payment) => {
     const course = data.courses.find(
       (item) => Number(item.id) === Number(payment.courseId),
@@ -382,6 +257,23 @@ export function Payments({ data, update, registerPayment, registerPayments, gene
                                 <span className="block text-[9px] text-[#89978f]">المتبقي</span>
                                 <b className="mt-1 block text-[11px] text-[#d56558]">{money(paymentRemaining)}</b>
                               </div>
+                            </div>
+                            <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-[#edf1ef] pt-3">
+                              {(payment.status === "مدفوع" || payment.status === "جزئي") && (
+                                <>
+                                  <Button variant="outline" onClick={() => setEditingPayment(payment)}>
+                                    تعديل
+                                  </Button>
+                                  <Button variant="outline" onClick={() => returnToDraft(payment)}>
+                                    إرجاع لمسودة
+                                  </Button>
+                                </>
+                              )}
+                              {payment.status === "مسودة" && (
+                                <Button variant="danger" onClick={() => cancelDraft(payment)}>
+                                  إلغاء المسودة
+                                </Button>
+                              )}
                             </div>
                           </div>
                         );
